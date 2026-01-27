@@ -1,13 +1,25 @@
 import { useState } from 'react'
 
-function Login() {
+interface LoginProps {
+  onLogin: () => void
+}
+
+function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Login attempt:', { email, password })
+    setError('')
+    
+    // Demo credentials
+    if (email === 'doctor@hospital.com' && password === '123') {
+      onLogin()
+    } else {
+      setError('Invalid email or password')
+    }
   }
 
   return (
@@ -52,7 +64,7 @@ function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
-                  placeholder="doctor@hospital.com"
+                  placeholder="Enter Email"
                   required
                 />
               </div>
@@ -75,7 +87,7 @@ function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
-                  placeholder="••••••••"
+                  placeholder="Enter Password"
                   required
                 />
                 <button
@@ -93,6 +105,13 @@ function Login() {
                 </button>
               </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
