@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 interface LoginProps {
-  onLogin: () => void
+  onLogin: (userType: 'doctor' | 'admin') => void
 }
 
 function Login({ onLogin }: LoginProps) {
@@ -16,7 +16,9 @@ function Login({ onLogin }: LoginProps) {
     
     // Demo credentials
     if (email === 'doctor@hospital.com' && password === '123') {
-      onLogin()
+      onLogin('doctor')
+    } else if (email === 'admin@hospital.com' && password === '123') {
+      onLogin('admin')
     } else {
       setError('Invalid email or password')
     }
