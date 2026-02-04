@@ -10,6 +10,7 @@ import AdminLayout from './pages/Admin/AdminLayout.tsx'
 import AdminDashboard from './pages/Admin/AdminDashboard.tsx'
 import StaffDirectory from './pages/Admin/StaffDirectory.tsx'
 import RosterGeneration from './pages/Admin/RosterGeneration.tsx'
+import Requests from './pages/Admin/Requests.tsx'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -48,6 +49,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="staff" element={<StaffDirectory />} />
           <Route path="roster" element={<RosterGeneration />} />
+          <Route path="requests" element={<Requests />} />
           <Route index element={<Navigate to="dashboard" replace />} />
         </Route>
       </Routes>
