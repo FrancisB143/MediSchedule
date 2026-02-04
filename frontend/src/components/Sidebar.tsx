@@ -23,7 +23,7 @@ function Sidebar({ onLogout }: SidebarProps) {
           to="/doctor/schedule"
           className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 ${
             isActive 
-              ? 'bg-blue-500 text-white' 
+              ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white' 
               : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
@@ -37,7 +37,7 @@ function Sidebar({ onLogout }: SidebarProps) {
           to="/doctor/shiftswap"
           className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 ${
             isActive 
-              ? 'bg-blue-500 text-white' 
+              ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white' 
               : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
@@ -51,7 +51,7 @@ function Sidebar({ onLogout }: SidebarProps) {
           to="/doctor/leaverequest"
           className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 ${
             isActive 
-              ? 'bg-blue-500 text-white' 
+              ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white' 
               : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
@@ -65,7 +65,7 @@ function Sidebar({ onLogout }: SidebarProps) {
           to="/doctor/monthlystats"
           className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 ${
             isActive 
-              ? 'bg-blue-500 text-white' 
+              ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white' 
               : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
