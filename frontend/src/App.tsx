@@ -8,6 +8,7 @@ import LeaveRequest from './pages/Doctor/LeaveRequest.tsx'
 import MonthlyStats from './pages/Doctor/MonthlyStats.tsx'
 import AdminLayout from './pages/Admin/AdminLayout.tsx'
 import AdminDashboard from './pages/Admin/AdminDashboard.tsx'
+import StaffDirectory from './pages/Admin/StaffDirectory.tsx'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -44,6 +45,7 @@ function App() {
           isLoggedIn && userType === 'admin' ? <AdminLayout onLogout={handleLogout} /> : <Navigate to="/" replace />
         }>
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="staff" element={<StaffDirectory />} />
           <Route index element={<Navigate to="dashboard" replace />} />
         </Route>
       </Routes>
