@@ -5,6 +5,7 @@ import DoctorLayout from './pages/Doctor/DoctorLayout.tsx'
 import MySchedule from './pages/Doctor/MySchedule.tsx'
 import ShiftSwap from './pages/Doctor/ShiftSwap.tsx'
 import LeaveRequest from './pages/Doctor/LeaveRequest.tsx'
+import MonthlyStats from './pages/Doctor/MonthlyStats.tsx'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -29,6 +30,7 @@ function App() {
           <Route path="schedule" element={<MySchedule />} />
           <Route path="shiftswap" element={<ShiftSwap />} />
           <Route path="leaverequest" element={<LeaveRequest />} />
+          <Route path="monthlystats" element={<MonthlyStats />} />
           <Route index element={<Navigate to="schedule" replace />} />
         </Route>
       </Routes>
