@@ -9,18 +9,39 @@ function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setIsLoading(true)
     
-    // Demo credentials
-    if (email === 'doctor@hospital.com' && password === '123') {
-      onLogin('doctor')
-    } else if (email === 'admin@hospital.com' && password === '123') {
-      onLogin('admin')
-    } else {
-      setError('Invalid email or password')
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Store token in localStorage
+        localStorage.setItem('authToken', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        
+        // Call onLogin with userType
+        onLogin(data.userType)
+      } else {
+        setError(data.error || 'Invalid email or password')
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Unable to connect to server. Please make sure the backend is running.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -132,9 +153,10 @@ function Login({ onLogin }: LoginProps) {
             {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-200"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 
