@@ -1,8 +1,12 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables (in reverse order of dependencies)
+DROP TABLE IF EXISTS admins CASCADE;
+DROP TABLE IF EXISTS doctors CASCADE;
+
 -- Create doctors table
-CREATE TABLE IF NOT EXISTS doctors (
+CREATE TABLE doctors (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
@@ -16,7 +20,7 @@ CREATE TABLE IF NOT EXISTS doctors (
 );
 
 -- Create admins table
-CREATE TABLE IF NOT EXISTS admins (
+CREATE TABLE admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
@@ -25,7 +29,7 @@ CREATE TABLE IF NOT EXISTS admins (
     role VARCHAR(50) DEFAULT 'admin',
     phone VARCHAR(20),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAM    P
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for faster lookups
@@ -42,7 +46,7 @@ VALUES (
     'Smith',
     'Cardiology',
     '555-0101'
-) ON CONFLICT (email) DO NOTHING;
+);
 
 -- Insert sample admin (password is '12345' hashed with bcrypt)
 INSERT INTO admins (email, password_hash, first_name, last_name, role, phone)
@@ -53,7 +57,7 @@ VALUES (
     'Doe',
     'System Administrator',
     '555-0102'
-) ON CONFLICT (email) DO NOTHING;
+);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

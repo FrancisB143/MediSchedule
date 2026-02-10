@@ -149,45 +149,6 @@ function MonthlyStats() {
           </div>
         </div>
 
-        {/* Hours by Department */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Hours by Department</h2>
-          <div className="space-y-6">
-            {/* Cardiology */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-base font-medium text-gray-700">Cardiology</span>
-                <span className="text-sm text-gray-500">85 hours</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-3 rounded-full" style={{ width: '85%' }}></div>
-              </div>
-            </div>
-
-            {/* Emergency */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-base font-medium text-gray-700">Emergency</span>
-                <span className="text-sm text-gray-500">32 hours</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-3 rounded-full" style={{ width: '32%' }}></div>
-              </div>
-            </div>
-
-            {/* Surgery */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-base font-medium text-gray-700">Surgery</span>
-                <span className="text-sm text-gray-500">18 hours</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-3 rounded-full" style={{ width: '18%' }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Shift Cards */}
         <div className="grid grid-cols-3 gap-6 mb-8">
           {/* Morning Shifts */}
@@ -230,46 +191,6 @@ function MonthlyStats() {
             </div>
             <div className="text-4xl font-bold text-purple-600 mb-2">6</div>
             <div className="text-sm text-purple-600">11:00 PM - 7:00 AM</div>
-          </div>
-        </div>
-
-        {/* Performance Summary */}
-        <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Performance Summary</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2 text-green-700">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm">100% attendance this month</span>
-                </div>
-                <div className="flex items-center gap-2 text-green-700">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm">No missed shifts</span>
-                </div>
-                <div className="flex items-center gap-2 text-green-700">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm">Balanced shift distribution</span>
-                </div>
-                <div className="flex items-center gap-2 text-green-700">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm">Within recommended work hours</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
