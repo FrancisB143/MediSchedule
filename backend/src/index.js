@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import shiftsRoutes from './routes/shifts.js';
+import shiftSwapRoutes from './routes/shift-swap.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftsRoutes);
+app.use('/api/shift-swap', shiftSwapRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
