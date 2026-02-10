@@ -8,6 +8,17 @@ router.get('/doctor/:doctorId', async (req, res) => {
   try {
     const { doctorId } = req.params;
 
+    // Get current doctor's specialization
+    const { data: currentDoctor, error: doctorError } = await supabase
+      .from('doctors')
+      .select('specialization')
+      .eq('id', doctorId)
+      .single();
+
+    if (doctorError || !currentDoctor) {
+      return res.status(404).json({ error: 'Doctor not found', details: doctorError });
+    }
+
     // Get current week's shifts
     const today = new Date();
     const startOfWeek = new Date(today);
@@ -60,7 +71,7 @@ router.get('/doctor/:doctorId', async (req, res) => {
       }
     });
 
-    // Count colleagues (other doctors working in the same shifts)
+    // Count colleagues (other doctors with same specialization working in the same shifts)
     // Query all shifts that match the doctor's shift dates
     const shiftDates = shifts.map(s => s.shift_date);
     const colleaguesByDate = {};
@@ -68,9 +79,18 @@ router.get('/doctor/:doctorId', async (req, res) => {
     if (shiftDates.length > 0) {
       const { data: colleagueShifts, error: colleagueError } = await supabase
         .from('shifts')
-        .select('doctor_id, shift_date, shift_type, department_id')
+        .select(`
+          doctor_id,
+          shift_date,
+          shift_type,
+          department_id,
+          doctors!inner (
+            specialization
+          )
+        `)
         .in('shift_date', shiftDates)
-        .neq('doctor_id', doctorId);
+        .neq('doctor_id', doctorId)
+        .eq('doctors.specialization', currentDoctor.specialization);
 
       if (!colleagueError && colleagueShifts) {
         // Group colleagues by date-type-department for accurate counting
