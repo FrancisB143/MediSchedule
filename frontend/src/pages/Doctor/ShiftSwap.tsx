@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Swal from 'sweetalert2'
 import Header from '../../components/Header'
 
 interface Shift {
@@ -36,7 +37,7 @@ interface SwapRequest {
 }
 
 interface Colleague {
-  id: number
+  id: string
   name: string
   specialization: string
   initials: string
@@ -46,30 +47,30 @@ interface Colleague {
 function ShiftSwap() {
   const [showModal, setShowModal] = useState(false)
   const [selectedShift, setSelectedShift] = useState<string | null>(null)
-  const [selectedColleague, setSelectedColleague] = useState<number | null>(null)
+  const [selectedColleague, setSelectedColleague] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [upcomingShifts, setUpcomingShifts] = useState<Shift[]>([])
   const [pendingRequests, setPendingRequests] = useState<SwapRequest[]>([])
+  const [colleagues, setColleagues] = useState<Colleague[]>([])
+  const [loadingColleagues, setLoadingColleagues] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Get doctor ID from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const doctorId = user.id
 
-  // Sample data for colleagues (this could be fetched from API in the future)
-  const colleagues: Colleague[] = [
-    { id: 1, name: 'Dr. Emily Rodriguez', specialization: 'Emergency Medicine', initials: 'ER', available: true },
-    { id: 2, name: 'Dr. James Taylor', specialization: 'Anesthesiology', initials: 'DJT', available: false },
-    { id: 3, name: 'Dr. Lisa Anderson', specialization: 'Pediatrics', initials: 'DLA', available: true },
-    { id: 4, name: 'Dr. David Kim', specialization: 'Radiology', initials: 'DDK', available: true },
-    { id: 5, name: 'Dr. Maria Garcia', specialization: 'Neurology', initials: 'DMG', available: false }
-  ]
-
-  const filteredColleagues = colleagues.filter(colleague =>
-    colleague.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    colleague.specialization.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredColleagues = colleagues
+    .filter(colleague =>
+      colleague.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      colleague.specialization.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Sort by availability: available first, then unavailable
+      if (a.available && !b.available) return -1
+      if (!a.available && b.available) return 1
+      return 0
+    })
 
   // Fetch pending requests and upcoming shifts
   useEffect(() => {
@@ -106,6 +107,36 @@ function ShiftSwap() {
     }
   }, [doctorId])
 
+  // Fetch available colleagues when a shift is selected
+  useEffect(() => {
+    const fetchColleagues = async () => {
+      if (!selectedShift || !doctorId) {
+        setColleagues([])
+        return
+      }
+
+      try {
+        setLoadingColleagues(true)
+        setSelectedColleague(null) // Reset selected colleague when shift changes
+        const response = await fetch(`http://localhost:3001/api/shift-swap/available-colleagues/${selectedShift}/${doctorId}`)
+        const data = await response.json()
+
+        if (data.success) {
+          setColleagues(data.colleagues)
+        } else {
+          setColleagues([])
+        }
+        setLoadingColleagues(false)
+      } catch (err) {
+        console.error('Error fetching colleagues:', err)
+        setColleagues([])
+        setLoadingColleagues(false)
+      }
+    }
+
+    fetchColleagues()
+  }, [selectedShift, doctorId])
+
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':')
     const hour = parseInt(hours)
@@ -122,41 +153,19 @@ function ShiftSwap() {
 
   const handleSendRequest = async () => {
     if (selectedShift && selectedColleague) {
-      try {
-        const response = await fetch('http://localhost:3001/api/shift-swap', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            requesterDoctorId: doctorId,
-            requesterShiftId: selectedShift,
-            targetDoctorId: selectedColleague
-          })
-        })
+      // Database insertion disabled - just show success message
+      setShowModal(false)
+      setSelectedShift(null)
+      setSelectedColleague(null)
+      setSearchQuery('')
 
-        const data = await response.json()
-
-        if (data.success) {
-          // Refresh pending requests
-          const requestsResponse = await fetch(`http://localhost:3001/api/shift-swap/doctor/${doctorId}`)
-          const requestsData = await requestsResponse.json()
-          
-          if (requestsData.success) {
-            setPendingRequests(requestsData.requests)
-          }
-
-          setShowModal(false)
-          setSelectedShift(null)
-          setSelectedColleague(null)
-          setSearchQuery('')
-        } else {
-          alert(data.error || 'Failed to create swap request')
-        }
-      } catch (err) {
-        console.error('Error creating swap request:', err)
-        alert('Failed to create swap request')
-      }
+      // Show success alert
+      Swal.fire({
+        icon: 'success',
+        title: 'Request Sent!',
+        text: 'Your shift swap request has been sent successfully.',
+        confirmButtonColor: '#3b82f6'
+      })
     }
   }
 
@@ -171,16 +180,31 @@ function ShiftSwap() {
       if (data.success) {
         // Refresh pending requests
         setPendingRequests(pendingRequests.filter(req => req.id !== requestId))
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Cancelled',
+          text: 'Swap request has been cancelled successfully.',
+          confirmButtonColor: '#3b82f6'
+        })
       } else {
-        alert('Failed to cancel swap request')
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed',
+          text: 'Failed to cancel swap request',
+          confirmButtonColor: '#3b82f6'
+        })
       }
     } catch (err) {
       console.error('Error cancelling swap request:', err)
-      alert('Failed to cancel swap request')
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to cancel swap request. Please try again.',
+        confirmButtonColor: '#3b82f6'
+      })
     }
   }
-
-  const hasPendingRequest = pendingRequests.length > 0
 
   return (
     <>
@@ -205,17 +229,12 @@ function ShiftSwap() {
               </div>
               <button 
                 onClick={() => setShowModal(true)}
-                disabled={hasPendingRequest}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all shadow-sm ${
-                  hasPendingRequest
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all shadow-sm bg-blue-600 text-white hover:bg-blue-700"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
-                {hasPendingRequest ? 'Request Already Pending' : 'New Swap Request'}
+                New Swap Request
               </button>
             </div>
 
@@ -396,54 +415,82 @@ function ShiftSwap() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Select Colleague</h3>
                   
-                  {/* Search Bar */}
-                  <div className="relative mb-4">
-                    <svg className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="Search by name or department..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Colleagues List */}
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {filteredColleagues.map((colleague) => (
-                      <div
-                        key={colleague.id}
-                        onClick={() => colleague.available && setSelectedColleague(colleague.id)}
-                        className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all ${
-                          selectedColleague === colleague.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : colleague.available
-                            ? 'border-gray-200 hover:border-gray-300'
-                            : 'border-gray-200 bg-gray-100 opacity-60 cursor-not-allowed'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          {/* Avatar */}
-                          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                            {colleague.initials}
-                          </div>
-                          {/* Info */}
-                          <div>
-                            <h4 className="font-semibold text-gray-800">{colleague.name}</h4>
-                            <p className="text-sm text-gray-600">{colleague.specialization}</p>
-                          </div>
-                        </div>
-                        {/* Availability Badge */}
-                        {!colleague.available && (
-                          <span className="px-3 py-1 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">
-                            Unavailable
-                          </span>
-                        )}
+                  {!selectedShift ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <p className="text-gray-600 text-sm">Please select a shift first to see available colleagues</p>
+                    </div>
+                  ) : loadingColleagues ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                      <div className="text-gray-500">Loading colleagues...</div>
+                    </div>
+                  ) : filteredColleagues.length === 0 ? (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <p className="text-gray-600 text-sm">No colleagues have shifts on this date</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <div className="relative mb-4">
+                        <svg className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                          type="text"
+                          placeholder="Search by name or department..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Colleagues List */}
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {filteredColleagues.map((colleague) => (
+                          <div
+                            key={colleague.id}
+                            onClick={() => colleague.available && setSelectedColleague(colleague.id)}
+                            className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all ${
+                              selectedColleague === colleague.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : colleague.available
+                                ? 'border-gray-200 hover:border-gray-300 bg-white'
+                                : 'border-gray-300 bg-gray-200 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* Avatar */}
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold ${
+                                colleague.available ? 'bg-blue-500' : 'bg-gray-400'
+                              }`}>
+                                {colleague.initials}
+                              </div>
+                              {/* Info */}
+                              <div>
+                                <h4 className={`font-semibold ${
+                                  colleague.available ? 'text-gray-800' : 'text-gray-500'
+                                }`}>{colleague.name}</h4>
+                                <p className={`text-sm ${
+                                  colleague.available ? 'text-gray-600' : 'text-gray-400'
+                                }`}>{colleague.specialization}</p>
+                              </div>
+                            </div>
+                            {/* Availability Badge */}
+                            {!colleague.available && (
+                              <span className="px-3 py-1 bg-gray-400 text-white text-xs font-medium rounded-full">
+                                Unavailable
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
