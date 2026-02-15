@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import shiftsRoutes from './routes/shifts.js';
 import shiftSwapRoutes from './routes/shift-swap.js';
+import leaveRequestsRoutes from './routes/leave-requests.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/shifts', shiftsRoutes);
 app.use('/api/shift-swap', shiftSwapRoutes);
+app.use('/api/leave-requests', leaveRequestsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
