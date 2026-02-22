@@ -1,9 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Staff {
   id: string
   name: string
   department: string
+  role: string
+  status: string
+  statusColor: string
+  email: string
+  phone: string
+  shifts: number
+  initials: string
 }
 
 interface Assignment {
@@ -12,26 +19,48 @@ interface Assignment {
 }
 
 function RosterGeneration() {
-  const [selectedDepartment, setSelectedDepartment] = useState('Emergency')
+  const [selectedDepartment, setSelectedDepartment] = useState('All Departments')
   const [draggedStaff, setDraggedStaff] = useState<Staff | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [showDatePicker, setShowDatePicker] = useState(false)
-  
-  const availableStaff: Staff[] = [
-    { id: '1', name: 'Dr. Sarah Chen', department: 'Cardiology' },
-    { id: '2', name: 'Dr. Michael Wong', department: 'Emergency' },
-    { id: '3', name: 'Dr. Emily Rodriguez', department: 'Surgery' },
-    { id: '4', name: 'Dr. James Taylor', department: 'Anesthesiology' },
-    { id: '5', name: 'Dr. Lisa Anderson', department: 'Pediatrics' },
-    { id: '6', name: 'Dr. David Kim', department: 'Radiology' }
-  ]
-
+  const [availableStaff, setAvailableStaff] = useState<Staff[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [assignments, setAssignments] = useState<Record<string, Assignment[]>>({})
 
-  const departments = ['Emergency', 'ICU', 'Surgery', 'Cardiology']
+  // Fetch staff members on component mount
+  useEffect(() => {
+    fetchStaffMembers()
+  }, [])
+
+  const fetchStaffMembers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('http://localhost:3001/api/staff')
+      const data = await response.json()
+
+      if (data.success) {
+        setAvailableStaff(data.staff)
+      } else {
+        setError('Failed to load staff members')
+      }
+    } catch (err) {
+      console.error('Error fetching staff:', err)
+      setError('Failed to load staff members')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const departments = ['All Departments', 'Cardiology', 'Emergency', 'Surgery', 'Anesthesiology', 'Pediatrics', 'Neurology', 'Radiology', 'Oncology']
   const shifts = ['Morning Shift', 'Afternoon Shift', 'Evening Shift']
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  // Filter staff by selected department
+  const filteredStaff = selectedDepartment === 'All Departments'
+    ? availableStaff
+    : availableStaff.filter(staff => staff.department === selectedDepartment)
 
   // Get calendar data
   const year = currentDate.getFullYear()
@@ -216,19 +245,37 @@ function RosterGeneration() {
         <div className="col-span-3">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 sticky top-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Available Staff</h3>
-            <div className="space-y-2">
-              {availableStaff.map((staff) => (
-                <div
-                  key={staff.id}
-                  draggable
-                  onDragStart={() => handleDragStart(staff)}
-                  className="p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg cursor-move hover:shadow-md transition-all duration-200 border border-blue-100"
-                >
-                  <p className="font-medium text-gray-800">{staff.name}</p>
-                  <p className="text-sm text-gray-500">{staff.department}</p>
-                </div>
-              ))}
-            </div>
+            
+            {/* Loading State */}
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="text-gray-500">Loading staff...</div>
+              </div>
+            ) : error ? (
+              <div className="text-center py-4">
+                <div className="text-red-500 text-sm">{error}</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredStaff.length === 0 ? (
+                  <div className="text-center py-4">
+                    <div className="text-gray-500 text-sm">No staff available for {selectedDepartment}</div>
+                  </div>
+                ) : (
+                  filteredStaff.map((staff) => (
+                    <div
+                      key={staff.id}
+                      draggable
+                      onDragStart={() => handleDragStart(staff)}
+                      className="p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg cursor-move hover:shadow-md transition-all duration-200 border border-blue-100"
+                    >
+                      <p className="font-medium text-gray-800">{staff.name}</p>
+                      <p className="text-sm text-gray-500">{staff.role}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
 

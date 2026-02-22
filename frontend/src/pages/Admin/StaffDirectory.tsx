@@ -1,108 +1,76 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Swal from 'sweetalert2'
+
+interface Staff {
+  id: string
+  name: string
+  role: string
+  department: string
+  status: string
+  statusColor: string
+  email: string
+  phone: string
+  shifts: number
+  initials: string
+}
 
 function StaffDirectory() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
+  const [showModal, setShowModal] = useState(false)
+  const [staffMembers, setStaffMembers] = useState<Staff[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [newStaffPassword, setNewStaffPassword] = useState('')
+  const [newStaffEmail, setNewStaffEmail] = useState('')
+  const [newStaffName, setNewStaffName] = useState('')
+  const [newStaff, setNewStaff] = useState({
+    name: '',
+    role: '',
+    department: '',
+    email: '',
+    phone: '',
+    status: 'Available'
+  })
 
-  const staffMembers = [
-    {
-      id: 1,
-      initials: 'DSC',
-      name: 'Dr. Sarah Chen',
-      role: 'Cardiologist',
-      department: 'Cardiology',
-      status: 'Available',
-      statusColor: 'green',
-      email: 'sarah.chen@hospital.com',
-      phone: '+1 234-567-8901',
-      shifts: 42
-    },
-    {
-      id: 2,
-      initials: 'DMW',
-      name: 'Dr. Michael Wong',
-      role: 'Emergency Physician',
-      department: 'Emergency',
-      status: 'On Shift',
-      statusColor: 'blue',
-      email: 'michael.wong@hospital.com',
-      phone: '+1 234-567-8902',
-      shifts: 38
-    },
-    {
-      id: 3,
-      initials: 'DER',
-      name: 'Dr. Emily Rodriguez',
-      role: 'Surgeon',
-      department: 'Surgery',
-      status: 'Available',
-      statusColor: 'green',
-      email: 'emily.rodriguez@hospital.com',
-      phone: '+1 234-567-8903',
-      shifts: 35
-    },
-    {
-      id: 4,
-      initials: 'DJT',
-      name: 'Dr. James Taylor',
-      role: 'Anesthesiologist',
-      department: 'Anesthesiology',
-      status: 'On Leave',
-      statusColor: 'orange',
-      email: 'james.taylor@hospital.com',
-      phone: '+1 234-567-8904',
-      shifts: 28
-    },
-    {
-      id: 5,
-      initials: 'DLA',
-      name: 'Dr. Lisa Anderson',
-      role: 'Pediatrician',
-      department: 'Pediatrics',
-      status: 'Available',
-      statusColor: 'green',
-      email: 'lisa.anderson@hospital.com',
-      phone: '+1 234-567-8905',
-      shifts: 40
-    },
-    {
-      id: 6,
-      initials: 'DDK',
-      name: 'Dr. David Kim',
-      role: 'Neurologist',
-      department: 'Neurology',
-      status: 'On Shift',
-      statusColor: 'blue',
-      email: 'david.kim@hospital.com',
-      phone: '+1 234-567-8906',
-      shifts: 36
-    },
-    {
-      id: 7,
-      initials: 'DMG',
-      name: 'Dr. Maria Garcia',
-      role: 'Radiologist',
-      department: 'Radiology',
-      status: 'Available',
-      statusColor: 'green',
-      email: 'maria.garcia@hospital.com',
-      phone: '+1 234-567-8907',
-      shifts: 32
-    },
-    {
-      id: 8,
-      initials: 'DRJ',
-      name: 'Dr. Robert Johnson',
-      role: 'Oncologist',
-      department: 'Oncology',
-      status: 'Available',
-      statusColor: 'green',
-      email: 'robert.johnson@hospital.com',
-      phone: '+1 234-567-8908',
-      shifts: 37
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownOpen && !(event.target as Element).closest('.dropdown-container')) {
+        setDropdownOpen(null)
+      }
     }
-  ]
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [dropdownOpen])
+
+  // Fetch staff members on component mount
+  useEffect(() => {
+    fetchStaffMembers()
+  }, [])
+
+  const fetchStaffMembers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('http://localhost:3001/api/staff')
+      const data = await response.json()
+
+      if (data.success) {
+        setStaffMembers(data.staff)
+      } else {
+        setError('Failed to load staff members')
+      }
+    } catch (err) {
+      console.error('Error fetching staff:', err)
+      setError('Failed to load staff members')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getStatusStyle = (color: string) => {
     switch(color) {
@@ -117,6 +85,131 @@ function StaffDirectory() {
     }
   }
 
+  const handleAddStaff = async () => {
+    // Validate required fields
+    if (!newStaff.name || !newStaff.role || !newStaff.email) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Fields',
+        text: 'Please fill in all required fields: Name, Role, and Email',
+        confirmButtonColor: '#3085d6'
+      })
+      return
+    }
+
+    try {
+      const response = await fetch('http://localhost:3001/api/staff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newStaff),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Server error:', errorData)
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed to Add Staff',
+          text: errorData.error || 'Unknown error',
+          confirmButtonColor: '#3085d6'
+        })
+        return
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Show the password modal
+        setNewStaffPassword(data.temporaryPassword)
+        setNewStaffEmail(data.staff.email)
+        setNewStaffName(data.staff.name)
+        setShowPasswordModal(true)
+
+        // Add the new staff member to the list
+        setStaffMembers(prev => [data.staff, ...prev])
+
+        // Reset form and close modal
+        setNewStaff({
+          name: '',
+          role: '',
+          department: '',
+          email: '',
+          phone: '',
+          status: 'Available'
+        })
+        setShowModal(false)
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed to Add Staff',
+          text: data.error || 'Unknown error',
+          confirmButtonColor: '#3085d6'
+        })
+      }
+    } catch (err) {
+      console.error('Error adding staff member:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err instanceof Error ? err.message : 'Failed to add staff member. Please try again.',
+        confirmButtonColor: '#3085d6'
+      })
+    }
+  }
+
+  const handleDeleteStaff = async (staffId: string, staffName: string) => {
+    // Show confirmation dialog
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Delete Staff Member?',
+      text: `Are you sure you want to remove ${staffName} from the staff directory? This action cannot be undone.`,
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel'
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/staff/${staffId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Remove the staff member from the list
+        setStaffMembers(prev => prev.filter(staff => staff.id !== staffId))
+        setDropdownOpen(null)
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: 'Staff member removed successfully!',
+          confirmButtonColor: '#3085d6'
+        })
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed to Remove Staff',
+          text: data.error || 'Unknown error',
+          confirmButtonColor: '#3085d6'
+        })
+      }
+    } catch (err) {
+      console.error('Error deleting staff member:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to remove staff member. Please try again.',
+        confirmButtonColor: '#3085d6'
+      })
+    }
+  }
+
   return (
     <div className="p-8">
       {/* Header Section */}
@@ -125,7 +218,10 @@ function StaffDirectory() {
           <h2 className="text-2xl font-semibold text-gray-800">Staff Directory</h2>
           <p className="text-sm text-gray-500 mt-1">{staffMembers.length} staff members</p>
         </div>
-        <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-sm hover:shadow-md">
+        <button 
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -186,8 +282,18 @@ function StaffDirectory() {
         </div>
       </div>
 
-      {/* Staff Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-gray-500">Loading staff members...</div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-6">
+          {error}
+        </div>
+      ) : (
+        /* Staff Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {staffMembers.map((staff) => (
           <div 
             key={staff.id}
@@ -198,11 +304,31 @@ function StaffDirectory() {
               <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg group-hover:bg-blue-600 transition-colors duration-200">
                 {staff.initials}
               </div>
-              <button className="text-gray-400 hover:text-gray-600 p-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-              </button>
+              <div className="relative dropdown-container">
+                <button 
+                  onClick={() => setDropdownOpen(dropdownOpen === staff.id ? null : staff.id)}
+                  className="text-gray-400 hover:text-gray-600 p-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </button>
+
+                {/* Dropdown Menu */}
+                {dropdownOpen === staff.id && (
+                  <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-48">
+                    <button
+                      onClick={() => handleDeleteStaff(staff.id, staff.name)}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Remove Staff
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Staff Info */}
@@ -246,6 +372,226 @@ function StaffDirectory() {
           </div>
         ))}
       </div>
+      )}
+
+      {/* Add Staff Member Modal */}
+      {showModal && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-200"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-white">Add New Staff Member</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="px-6 py-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+              <div className="space-y-6">
+                {/* Name Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={newStaff.name}
+                    onChange={(e) => setNewStaff({...newStaff, name: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter full name"
+                  />
+                </div>
+
+                {/* Role Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Role/Specialization</label>
+                  <input
+                    type="text"
+                    value={newStaff.role}
+                    onChange={(e) => setNewStaff({...newStaff, role: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., Cardiologist, Nurse, etc."
+                  />
+                </div>
+
+                {/* Department Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                  <select
+                    value={newStaff.department}
+                    onChange={(e) => setNewStaff({...newStaff, department: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer"
+                  >
+                    <option value="">Select Department</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="Surgery">Surgery</option>
+                    <option value="Anesthesiology">Anesthesiology</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Radiology">Radiology</option>
+                    <option value="Oncology">Oncology</option>
+                  </select>
+                </div>
+
+                {/* Email Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    value={newStaff.email}
+                    onChange={(e) => setNewStaff({...newStaff, email: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="email@hospital.com"
+                  />
+                </div>
+
+                {/* Phone Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={newStaff.phone}
+                    onChange={(e) => setNewStaff({...newStaff, phone: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="+1 234-567-8900"
+                  />
+                </div>
+
+                {/* Status Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Initial Status</label>
+                  <select
+                    value={newStaff.status}
+                    onChange={(e) => setNewStaff({...newStaff, status: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer"
+                  >
+                    <option value="Available">Available</option>
+                    <option value="On Shift">On Shift</option>
+                    <option value="On Leave">On Leave</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  setNewStaff({
+                    name: '',
+                    role: '',
+                    department: '',
+                    email: '',
+                    phone: '',
+                    status: 'Available'
+                  })
+                }}
+                className="px-6 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddStaff}
+                disabled={!newStaff.name || !newStaff.role || !newStaff.department || !newStaff.email}
+                className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
+                  newStaff.name && newStaff.role && newStaff.department && newStaff.email
+                    ? 'bg-blue-500 text-white hover:bg-blue-600'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Add Staff Member
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Temporary Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Staff Member Added Successfully!</h2>
+              <p className="text-gray-600 mb-4">Share the temporary password with the new staff member</p>
+            </div>
+
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <div>
+                <label className="text-sm font-semibold text-gray-700">Name</label>
+                <p className="text-gray-800 font-mono bg-white p-2 rounded border border-gray-300">{newStaffName}</p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-700">Email</label>
+                <p className="text-gray-800 font-mono bg-white p-2 rounded border border-gray-300">{newStaffEmail}</p>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-700">Temporary Password</label>
+                <div className="flex gap-2">
+                  <p className="text-gray-800 font-mono bg-white p-2 rounded border border-gray-300 flex-1">{newStaffPassword}</p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(newStaffPassword)
+                      Swal.fire({
+                        icon: 'success',
+                        title: 'Copied!',
+                        text: 'Password copied to clipboard!',
+                        timer: 2000,
+                        timerProgressBar: true,
+                        confirmButtonColor: '#3085d6'
+                      })
+                    }}
+                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-200">
+              💡 <strong>Tip:</strong> The staff member should change the password after their first login.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  const mailtoLink = `mailto:${newStaffEmail}?subject=Welcome to MediSchedule - Your Login Credentials&body=Hello%20${encodeURIComponent(newStaffName)},%0A%0AYour%20account%20has%20been%20created.%20Here%20are%20your%20login%20credentials:%0A%0AEmail:%20${encodeURIComponent(newStaffEmail)}%0ATemporary%20Password:%20${encodeURIComponent(newStaffPassword)}%0A%0APlease%20log%20in%20and%20change%20your%20password%20immediately.%0A%0ALogin%20at:%20http://localhost:5173`;
+                  window.location.href = mailtoLink;
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Email Ready!',
+                    text: 'Your email client is opening with the login credentials.',
+                    timer: 3000,
+                    timerProgressBar: true,
+                    confirmButtonColor: '#3085d6'
+                  })
+                }}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Send via Email
+              </button>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
