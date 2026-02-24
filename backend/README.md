@@ -19,6 +19,25 @@ The `.env` file is already configured with your Supabase credentials:
 - SUPABASE_JWT_SECRET: Your JWT secret
 - PORT: 3001
 
+#### Email Configuration (for Staff Management)
+
+To enable email functionality for sending temporary passwords to new staff members:
+
+1. **Set up Gmail App Password:**
+   - Enable 2-factor authentication on your Google account
+   - Go to [Google Account Settings](https://myaccount.google.com/security)
+   - Navigate to "Security" → "Signing in to Google" → "App passwords"
+   - Generate a new app password for "Mail"
+   - Copy the 16-character password (ignore spaces)
+
+2. **Update .env file:**
+   ```env
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASS=your-16-character-app-password
+   ```
+
+**Note:** Never use your regular Gmail password. Always use an App Password for security.
+
 ### 3. Set up Database Schema
 
 1. Go to your Supabase Dashboard: https://qassaeydofbeqydvkagj.supabase.co
@@ -147,7 +166,13 @@ backend/
 │   ├── config/
 │   │   └── supabase.js       # Supabase client configuration
 │   ├── routes/
-│   │   └── auth.js            # Authentication routes
+│   │   ├── auth.js            # Authentication routes
+│   │   ├── staff.js           # Staff management routes
+│   │   ├── shifts.js          # Shift management routes
+│   │   ├── leave-requests.js  # Leave request routes
+│   │   └── shift-swap.js      # Shift swap routes
+│   ├── services/
+│   │   └── emailService.js    # Email sending service
 │   ├── utils/
 │   │   └── hashPassword.js    # Password hashing utility
 │   └── index.js               # Main application file

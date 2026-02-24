@@ -46,6 +46,7 @@ router.post('/login', async (req, res) => {
             email: doctor.email,
             firstName: doctor.first_name,
             lastName: doctor.last_name,
+            phone: doctor.phone,
             specialization: doctor.specialization
           }
         });
@@ -85,6 +86,7 @@ router.post('/login', async (req, res) => {
             email: admin.email,
             firstName: admin.first_name,
             lastName: admin.last_name,
+            phone: admin.phone,
             role: admin.role
           }
         });
@@ -118,6 +120,139 @@ router.get('/verify', async (req, res) => {
 
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Update profile endpoint
+router.put('/update-profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    const { firstName, lastName, email, phone, specialization, role } = req.body;
+
+    // Determine if user is doctor or admin
+    let table = decoded.type === 'admin' ? 'admins' : 'doctors';
+    
+    // Build update object based on user type
+    let updateData = {
+      first_name: firstName,
+      last_name: lastName,
+      email: email
+    };
+
+    // Only add phone if it's provided
+    if (phone) {
+      updateData.phone = phone;
+    }
+
+    // Add specialization for doctors, role for admins
+    if (decoded.type === 'doctor') {
+      updateData.specialization = specialization;
+    } else {
+      updateData.role = role;
+    }
+
+    console.log('Update data:', updateData);
+    console.log('Table:', table);
+    console.log('Decoded ID:', decoded.id);
+
+    // Update user profile
+    const { data: updatedUser, error } = await supabase
+      .from(table)
+      .update(updateData)
+      .eq('id', decoded.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Update error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error details:', error.details);
+      return res.status(500).json({ error: 'Failed to update profile', details: error.message, code: error.code });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser.id,
+        firstName: updatedUser.first_name,
+        lastName: updatedUser.last_name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        specialization: updatedUser.specialization || updatedUser.role
+      }
+    });
+  } catch (err) {
+    console.error('Error updating profile:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+});
+
+// Change password endpoint
+router.put('/change-password', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    // Determine if user is doctor or admin
+    let table = decoded.type === 'admin' ? 'admins' : 'doctors';
+    
+    // Get current user
+    const { data: user, error: userError } = await supabase
+      .from(table)
+      .select('*')
+      .eq('id', decoded.id)
+      .single();
+
+    if (userError || !user) {
+      return res.status(500).json({ error: 'User not found' });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    const { data: updatedUser, error } = await supabase
+      .from(table)
+      .update({ password_hash: hashedPassword })
+      .eq('id', decoded.id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to change password', details: error });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (err) {
+    console.error('Error changing password:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

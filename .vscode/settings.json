@@ -1,0 +1,10 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "npm run dev": true,
+        "netstat": true,
+        "/^cd backend ; node src/index\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
