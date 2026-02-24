@@ -1,435 +1,114 @@
 # DocTime - Hospital Management System
 
-Complete setup guide for DocTime with Express.js backend and Supabase database.
+## 🎯 System Purpose
 
-## 🚀 Quick Start
+DocTime is a comprehensive hospital management system designed to streamline healthcare operations and improve workforce coordination. The system facilitates efficient scheduling, leave management, and shift coordination for medical staff while providing administrators with powerful tools to manage hospital resources and personnel.
 
-### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
-- Supabase account (already configured)
+The platform addresses key challenges in hospital operations:
+- **Schedule Management**: Automated roster generation and shift assignments
+- **Staff Coordination**: Seamless shift swapping between doctors
+- **Leave Administration**: Structured leave request and approval workflow
+- **Resource Oversight**: Centralized staff directory and operational insights
+- **Data Analytics**: Monthly statistics and performance tracking
 
----
-
-## 📦 Setup Instructions
-
-### Step 1: Set up Supabase Database
-
-1. **Go to Supabase SQL Editor**
-   - Visit: https://qassaeydofbeqydvkagj.supabase.co
-   - Navigate to: **SQL Editor** (left sidebar)
-
-2. **Execute Database Schema**
-   - Open file: `backend/supabase/schema.sql`
-   - Copy all the SQL code
-   - Paste into Supabase SQL Editor
-   - Click **RUN** to execute
-
-   This will create:
-   - ✅ `doctors` table with authentication
-   - ✅ `admins` table with authentication
-   - ✅ Row Level Security (RLS) policies
-   - ✅ Sample users (abucio_230000001128@uic.edu.ph & fbangoy_230000001354@uic.edu.ph)
-   - ✅ Indexes and triggers
-
-### Step 2: Install Backend Dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### Step 3: Start Backend Server
-
-```bash
-npm run dev
-```
-
-The backend will start on: **http://localhost:3001**
-
-You should see: `🚀 Server is running on http://localhost:3001`
-
-### Step 4: Install Frontend Dependencies
-
-```bash
-cd ../frontend
-npm install
-```
-
-### Step 5: Start Frontend Application
-
-```bash
-npm run dev
-```
-
-The frontend will start on: **http://localhost:5173**
+Built with modern web technologies, DocTime ensures secure authentication, real-time updates, and an intuitive user experience for all stakeholders.
 
 ---
 
-## 🔐 Default Login Credentials
+## 👥 User Roles and Functions
 
-After executing the database schema, you can login with:
+### 🩺 Doctor Functions
 
-### Doctor Account
-- **Email:** `abucio_230000001128@uic.edu.ph`
-- **Password:** `12345`
-- **Name:** John Smith
-- **Specialization:** Cardiology
+Doctors have access to self-service features that empower them to manage their schedules and coordinate with colleagues:
 
-### Admin Account
-- **Email:** `fbangoy_230000001354@uic.edu.ph`
-- **Password:** `12345`
-- **Name:** Jane Doe
-- **Role:** System Administrator
+#### My Schedule
+- View assigned shifts with date, time, and department information
+- Access upcoming and past shift history
+- See detailed shift assignments including duration and location
+- Receive notifications for schedule changes
 
----
+#### Leave Requests
+- Submit leave requests with start date, end date, and reason
+- Track request status (pending, approved, rejected)
+- View leave balance and history
+- Receive notifications on request approvals or rejections
+- Attach supporting documentation when required
 
-## 🏗️ Project Structure
+#### Shift Swap
+- Initiate shift swap requests with other doctors
+- Browse available shifts for swapping
+- View incoming swap requests from colleagues
+- Accept or decline swap proposals
+- See swap history and status updates
 
-```
-DocTime/
-├── backend/                    # Express.js Backend
-│   ├── src/
-│   │   ├── config/
-│   │   │   └── supabase.js    # Supabase client config
-│   │   ├── routes/
-│   │   │   └── auth.js        # Authentication endpoints
-│   │   ├── utils/
-│   │   │   └── hashPassword.js # Password utility
-│   │   └── index.js           # Main server file
-│   ├── supabase/
-│   │   ├── schema.sql         # Database schema
-│   │   └── README.md          # Database docs
-│   ├── .env                   # Environment variables
-│   ├── .gitignore
-│   ├── package.json
-│   └── README.md
-│
-└── frontend/                  # React + TypeScript Frontend
-    ├── src/
-    │   ├── pages/
-    │   │   ├── Login.tsx      # Login page (updated)
-    │   │   ├── Admin/         # Admin pages
-    │   │   └── Doctor/        # Doctor pages
-    │   ├── components/        # Reusable components
-    │   └── main.tsx
-    ├── package.json
-    └── vite.config.ts
-```
+#### Monthly Statistics
+- View personal performance metrics
+- Track total hours worked per month
+- See shift completion rates
+- Monitor leave days taken
+- Analyze work patterns and trends
 
 ---
 
-## 🔧 Backend API Endpoints
+### 👔 Admin Functions
 
-### Authentication
+Administrators have comprehensive oversight and management capabilities to ensure smooth hospital operations:
 
-#### POST `/api/auth/login`
-Login with email and password.
+#### Staff Directory
+- View complete list of all doctors and medical staff
+- Search and filter by name, specialization, or department
+- Access staff contact information and credentials
+- Add new doctors to the system
+- Update staff information and credentials
+- Deactivate or archive staff records
+- Export staff data for reporting
 
-**Request:**
-```json
-{
-  "email": "abucio_230000001128@uic.edu.ph",
-  "password": "12345"
-}
-```
+#### Roster Generation
+- Create automated shift schedules based on:
+  - Staff availability
+  - Specialization requirements
+  - Department needs
+  - Fair distribution of shifts
+- Generate weekly, monthly, or custom period rosters
+- Preview schedules before publishing
+- Make manual adjustments to auto-generated rosters
+- Publish schedules to notify all assigned doctors
+- Handle emergency scheduling and last-minute changes
 
-**Response (Success):**
-```json
-{
-  "success": true,
-  "userType": "doctor",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "uuid-here",
-    "email": "abucio_230000001128@uic.edu.ph",
-    "firstName": "John",
-    "lastName": "Smith",
-    "specialization": "Cardiology"
-  }
-}
-```
+#### Leave Request Management
+- Review all pending leave requests
+- Approve or reject requests with comments
+- View leave calendar across all staff
+- Check staffing levels before approving leaves
+- Set leave policies and rules
+- Generate leave reports and analytics
+- Manage leave quotas and entitlements
 
-**Response (Error):**
-```json
-{
-  "error": "Invalid email or password"
-}
-```
+#### Dashboard & Analytics
+- View overall hospital operational metrics
+- Monitor staff utilization rates
+- Track leave trends and patterns
+- See shift coverage status
+- Access real-time staffing levels
+- Generate comprehensive reports
+- Export data for external analysis
 
-#### GET `/api/auth/verify`
-Verify JWT token validity.
-
-**Headers:**
-```
-Authorization: Bearer <your-jwt-token>
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "user": {
-    "id": "uuid",
-    "email": "abucio_230000001128@uic.edu.ph",
-    "type": "doctor"
-  }
-}
-```
-
-#### GET `/api/health`
-Check server status.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "DocTime Backend is running"
-}
-```
+#### System Administration
+- Manage user accounts and permissions
+- Configure system settings and preferences
+- Set up departments and specializations
+- Define shift types and durations
+- Maintain data security and backups
+- Monitor system health and performance
 
 ---
 
-## 🗄️ Database Schema
-
-### doctors Table
-```sql
-- id (UUID, Primary Key)
-- email (VARCHAR, Unique)
-- password_hash (TEXT)
-- first_name (VARCHAR)
-- last_name (VARCHAR)
-- specialization (VARCHAR)
-- phone (VARCHAR)
-- license_number (VARCHAR)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-### admins Table
-```sql
-- id (UUID, Primary Key)
-- email (VARCHAR, Unique)
-- password_hash (TEXT)
-- first_name (VARCHAR)
-- last_name (VARCHAR)
-- role (VARCHAR)
-- phone (VARCHAR)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
----
-
-## 🔒 Security Features
-
-- ✅ **Password Hashing**: bcrypt with 10 salt rounds
-- ✅ **JWT Authentication**: Tokens expire in 24 hours
-- ✅ **Row Level Security**: Enabled on all tables
-- ✅ **CORS Protection**: Configured for frontend origin
-- ✅ **Environment Variables**: Sensitive data in .env file
-
----
-
-## 🧪 Testing the System
-
-### Test Backend is Running
-
-**Option 1: Browser**
-Visit: http://localhost:3001/api/health
-
-**Option 2: PowerShell**
-```powershell
-(Invoke-WebRequest -Uri http://localhost:3001/api/health -UseBasicParsing).Content
-```
-
-### Test Login API
-
-```powershell
-$body = @{
-    email = "abucio_230000001128@uic.edu.ph"
-    password = "12345"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri http://localhost:3001/api/auth/login -Method Post -Body $body -ContentType "application/json"
-```
-
-### Test Frontend Login
-
-1. Open browser: http://localhost:5173
-2. Login with:
-   - Email: `abucio_230000001128@uic.edu.ph`
-   - Password: `12345`
-3. You should be redirected to the Doctor Dashboard
-
----
-
-## 👥 Adding New Users
-
-### Using Password Hash Utility
-
-```bash
-cd backend
-node src/utils/hashPassword.js YourPassword123
-```
-
-This will output a bcrypt hash. Copy it and use in SQL:
-
-```sql
-INSERT INTO doctors (email, password_hash, first_name, last_name, specialization)
-VALUES (
-  'newdoctor@hospital.com', 
-  '$2b$10$...your-hash-here...', 
-  'Jane', 
-  'Doe', 
-  'Neurology'
-);
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Backend won't start
-
-1. **Check if port 3001 is in use:**
-   ```powershell
-   Get-NetTCPConnection -LocalPort 3001
-   ```
-
-2. **Kill the process if needed:**
-   ```powershell
-   Stop-Process -Id <PID> -Force
-   ```
-
-3. **Or change the port in `.env`:**
-   ```
-   PORT=3002
-   ```
-
-### Cannot connect to Supabase
-
-1. Verify environment variables in `backend/.env`
-2. Check Supabase project status at: https://supabase.com/dashboard
-3. Ensure database schema was executed successfully
-
-### Login fails (Invalid credentials)
-
-1. Verify you executed the complete `schema.sql` file
-2. Check if sample users were inserted:
-   ```sql
-   SELECT email FROM doctors;
-   SELECT email FROM admins;
-   ```
-
-### Frontend can't reach backend
-
-1. Ensure backend is running on port 3001
-2. Check browser console for CORS errors
-3. Verify fetch URL in Login.tsx: `http://localhost:3001/api/auth/login`
-
-### Database connection errors
-
-1. Check Supabase URL and keys in `.env`
-2. Ensure your Supabase project is not paused
-3. Verify you have internet connection
-
----
-
-## 🔄 Development Workflow
-
-### Running Both Servers
-
-**Terminal 1 (Backend):**
-```bash
-cd backend
-npm run dev
-```
-
-**Terminal 2 (Frontend):**
-```bash
-cd frontend
-npm run dev
-```
-
-### Making Database Changes
-
-1. Update `backend/supabase/schema.sql`
-2. Execute the changes in Supabase SQL Editor
-3. Restart backend if needed
-
-### Adding New API Endpoints
-
-1. Create/update route files in `backend/src/routes/`
-2. Import and use in `backend/src/index.js`
-3. Restart backend server
-
----
-
-## 📝 Environment Variables
-
-### Backend (.env)
-
-```env
-SUPABASE_URL=https://qassaeydofbeqydvkagj.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_JWT_SECRET=your-jwt-secret
-PORT=3001
-JWT_SECRET=your-jwt-secret-key
-```
-
-⚠️ **Important:** Never commit `.env` to version control. It's already in `.gitignore`.
-
----
-
-## 🎯 Next Steps
-
-1. ✅ Execute database schema in Supabase
-2. ✅ Start backend server
-3. ✅ Start frontend application
-4. ✅ Test login with default credentials
-5. 🔄 Start building additional features:
-   - Staff directory
-   - Roster generation
-   - Leave requests
-   - Shift swapping
-   - Monthly statistics
-
----
-
-## 📚 Technologies Used
-
-### Backend
-- **Express.js** - Web framework
-- **Supabase** - PostgreSQL database
-- **bcrypt** - Password hashing
-- **jsonwebtoken** - JWT authentication
-- **cors** - Cross-origin resource sharing
-- **dotenv** - Environment configuration
-
-### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **React Router** - Navigation
-
----
-
-## 🤝 Support
-
-For issues or questions:
-1. Check the troubleshooting section above
-2. Review backend logs in terminal
-3. Check browser console for frontend errors
-4. Verify Supabase dashboard for database issues
-
----
-
-## 📄 License
-
-This project is for educational/internal use.
-
----
-
-**Happy Coding! 🚀**
+## 🔐 Security & Access Control
+
+Both user types benefit from:
+- Secure JWT-based authentication
+- Role-based access control (RBAC)
+- Password encryption using bcrypt
+- Session management and timeout
+- Audit logging for critical actions
+- Data privacy compliance
