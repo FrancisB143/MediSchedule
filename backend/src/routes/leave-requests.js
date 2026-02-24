@@ -54,7 +54,7 @@ router.get('/doctor/:doctorId', async (req, res) => {
       .from('leave_requests')
       .select(`
         *,
-        approved_by_admin:admins!leave_requests_approved_by_fkey(
+        admins!approved_by(
           first_name,
           last_name
         )
@@ -62,7 +62,10 @@ router.get('/doctor/:doctorId', async (req, res) => {
       .eq('doctor_id', doctorId)
       .order('submitted_date', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
 
     res.json(data);
   } catch (error) {
@@ -213,6 +216,178 @@ router.delete('/:requestId', async (req, res) => {
   } catch (error) {
     console.error('Error cancelling leave request:', error);
     res.status(500).json({ error: 'Failed to cancel leave request' });
+  }
+});
+
+// GET /api/leave-requests/all - Get all leave requests (for admin)
+router.get('/all', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select(`
+        *,
+        doctor:doctors!doctor_id(
+          id,
+          first_name,
+          last_name,
+          email,
+          specialization
+        ),
+        admins!approved_by(
+          first_name,
+          last_name
+        )
+      `)
+      .order('submitted_date', { ascending: false });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching all leave requests:', error);
+    res.status(500).json({ error: 'Failed to fetch leave requests' });
+  }
+});
+
+// PATCH /api/leave-requests/:requestId/approve - Approve a leave request
+router.patch('/:requestId/approve', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { admin_id } = req.body;
+
+    if (!admin_id) {
+      return res.status(400).json({ error: 'Admin ID is required' });
+    }
+
+    // Get the leave request details first
+    const { data: leaveRequest, error: fetchError } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (leaveRequest.status !== 'Pending') {
+      return res.status(400).json({ error: 'Only pending requests can be approved' });
+    }
+
+    // Calculate number of days
+    const startDate = new Date(leaveRequest.start_date);
+    const endDate = new Date(leaveRequest.end_date);
+    const daysDifference = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Update the leave request status
+    const { error: updateError } = await supabase
+      .from('leave_requests')
+      .update({
+        status: 'Approved',
+        approved_by: admin_id,
+        approved_date: new Date().toISOString()
+      })
+      .eq('id', requestId);
+
+    if (updateError) throw updateError;
+
+    // Update leave balance (move pending_days to used_days)
+    const currentYear = new Date().getFullYear();
+    
+    const { data: balance } = await supabase
+      .from('leave_balances')
+      .select('*')
+      .eq('doctor_id', leaveRequest.doctor_id)
+      .eq('year', currentYear)
+      .single();
+
+    if (balance) {
+      const { error: balanceUpdateError } = await supabase
+        .from('leave_balances')
+        .update({
+          pending_days: Math.max(0, balance.pending_days - daysDifference),
+          used_days: balance.used_days + daysDifference
+        })
+        .eq('id', balance.id);
+
+      if (balanceUpdateError) throw balanceUpdateError;
+    }
+
+    res.json({ message: 'Leave request approved successfully' });
+  } catch (error) {
+    console.error('Error approving leave request:', error);
+    res.status(500).json({ error: 'Failed to approve leave request' });
+  }
+});
+
+// PATCH /api/leave-requests/:requestId/reject - Reject a leave request
+router.patch('/:requestId/reject', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { admin_id, rejection_reason } = req.body;
+
+    if (!admin_id) {
+      return res.status(400).json({ error: 'Admin ID is required' });
+    }
+
+    // Get the leave request details first
+    const { data: leaveRequest, error: fetchError } = await supabase
+      .from('leave_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (leaveRequest.status !== 'Pending') {
+      return res.status(400).json({ error: 'Only pending requests can be rejected' });
+    }
+
+    // Calculate number of days
+    const startDate = new Date(leaveRequest.start_date);
+    const endDate = new Date(leaveRequest.end_date);
+    const daysDifference = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Update the leave request status
+    const { error: updateError } = await supabase
+      .from('leave_requests')
+      .update({
+        status: 'Rejected',
+        approved_by: admin_id,
+        approved_date: new Date().toISOString(),
+        rejection_reason: rejection_reason || 'No reason provided'
+      })
+      .eq('id', requestId);
+
+    if (updateError) throw updateError;
+
+    // Update leave balance (restore pending_days and remaining_days)
+    const currentYear = new Date().getFullYear();
+    
+    const { data: balance } = await supabase
+      .from('leave_balances')
+      .select('*')
+      .eq('doctor_id', leaveRequest.doctor_id)
+      .eq('year', currentYear)
+      .single();
+
+    if (balance) {
+      const { error: balanceUpdateError } = await supabase
+        .from('leave_balances')
+        .update({
+          pending_days: Math.max(0, balance.pending_days - daysDifference),
+          remaining_days: balance.remaining_days + daysDifference
+        })
+        .eq('id', balance.id);
+
+      if (balanceUpdateError) throw balanceUpdateError;
+    }
+
+    res.json({ message: 'Leave request rejected successfully' });
+  } catch (error) {
+    console.error('Error rejecting leave request:', error);
+    res.status(500).json({ error: 'Failed to reject leave request' });
   }
 });
 
