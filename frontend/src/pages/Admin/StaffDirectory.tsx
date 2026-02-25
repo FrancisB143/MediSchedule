@@ -377,7 +377,7 @@ function StaffDirectory() {
       {/* Add Staff Member Modal */}
       {showModal && (
         <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-200"
+          className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-200"
           onClick={() => setShowModal(false)}
         >
           <div 
@@ -520,71 +520,24 @@ function StaffDirectory() {
 
       {/* Temporary Password Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4"
+        >
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
             <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Staff Member Added Successfully!</h2>
-              <p className="text-gray-600 mb-4">Share the temporary password with the new staff member</p>
+              <p className="text-gray-600">The temporary password has been sent to the staff member's email address for logging in to the system</p>
             </div>
 
-            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-              <div>
-                <label className="text-sm font-semibold text-gray-700">Name</label>
-                <p className="text-gray-800 font-mono bg-white p-2 rounded border border-gray-300">{newStaffName}</p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700">Email</label>
-                <p className="text-gray-800 font-mono bg-white p-2 rounded border border-gray-300">{newStaffEmail}</p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700">Temporary Password</label>
-                <div className="flex gap-2">
-                  <p className="text-gray-800 font-mono bg-white p-2 rounded border border-gray-300 flex-1">{newStaffPassword}</p>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(newStaffPassword)
-                      Swal.fire({
-                        icon: 'success',
-                        title: 'Copied!',
-                        text: 'Password copied to clipboard!',
-                        timer: 2000,
-                        timerProgressBar: true,
-                        confirmButtonColor: '#3085d6'
-                      })
-                    }}
-                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-200">
-              💡 <strong>Tip:</strong> The staff member should change the password after their first login.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  const mailtoLink = `mailto:${newStaffEmail}?subject=Welcome to MediSchedule - Your Login Credentials&body=Hello%20${encodeURIComponent(newStaffName)},%0A%0AYour%20account%20has%20been%20created.%20Here%20are%20your%20login%20credentials:%0A%0AEmail:%20${encodeURIComponent(newStaffEmail)}%0ATemporary%20Password:%20${encodeURIComponent(newStaffPassword)}%0A%0APlease%20log%20in%20and%20change%20your%20password%20immediately.%0A%0ALogin%20at:%20http://localhost:5173`;
-                  window.location.href = mailtoLink;
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Email Ready!',
-                    text: 'Your email client is opening with the login credentials.',
-                    timer: 3000,
-                    timerProgressBar: true,
-                    confirmButtonColor: '#3085d6'
-                  })
-                }}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Send via Email
-              </button>
+            <div className="flex gap-3 pt-4">
               <button
                 onClick={() => setShowPasswordModal(false)}
-                className="flex-1 px-4 py-2.5 bg-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-400 transition-colors"
+                className="w-full px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Close
               </button>

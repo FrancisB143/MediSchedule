@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import { supabase } from '../config/supabase.js';
+import { sendTemporaryPasswordEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -84,12 +85,26 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: 'Failed to create staff member', details: error });
     }
 
+    const fullName = `${newDoctor.first_name} ${newDoctor.last_name}`;
+    
+    // Send temporary password email automatically
+    try {
+      const emailResult = await sendTemporaryPasswordEmail(email, fullName, temporaryPassword);
+      if (emailResult.success) {
+        console.log('Email sent successfully to:', email);
+      } else {
+        console.warn('Failed to send email:', emailResult.error);
+      }
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+    }
+
     res.json({
       success: true,
       message: 'Staff member created successfully',
       staff: {
         id: newDoctor.id,
-        name: `${newDoctor.first_name} ${newDoctor.last_name}`,
+        name: fullName,
         role: newDoctor.specialization,
         department: 'Not Assigned',
         status: 'Available',
