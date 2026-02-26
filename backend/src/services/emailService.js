@@ -1,9 +1,8 @@
 // Brevo Email Service - Send emails via Brevo API
-// API Key: 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
-// Verified Sender: kbaltazar_230000000268@uic.edu.ph
-const BREVO_API_KEY = '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';
+// Load credentials from environment variables
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
-const SENDER_EMAIL = 'kbaltazar_230000000268@uic.edu.ph';
+const SENDER_EMAIL = process.env.SENDER_EMAIL || 'noreply@medischedule.com';
 const SENDER_NAME = 'MediSchedule';
 
 // Function to send temporary password email via Brevo
