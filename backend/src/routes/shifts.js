@@ -190,4 +190,206 @@ router.get('/doctor/:doctorId/upcoming', async (req, res) => {
   }
 });
 
+// Publish roster/schedule - saves assignments to the database
+router.post('/publish', async (req, res) => {
+  try {
+    const { assignments, month, year } = req.body;
+
+    if (!assignments || Object.keys(assignments).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No assignments to publish' 
+      });
+    }
+
+    // Convert assignments object to array of shift entries
+    const shiftsToCreate = [];
+    const seenShifts = new Set(); // Track unique shifts to prevent duplicates
+    
+    for (const [key, staffList] of Object.entries(assignments)) {
+      // Parse key: "YYYY-M-DD-ShiftType" or "YYYY-M-D-ShiftType"
+      // Use regex to handle variable-length month/day
+      const keyMatch = key.match(/^(\d{4})-(\d{1,2})-(\d{1,2})-(.+)$/);
+      
+      if (!keyMatch) {
+        console.warn(`Invalid key format: ${key}`);
+        continue;
+      }
+      
+      const [, assignYear, assignMonth, day, shiftType] = keyMatch;
+      const shiftDate = new Date(parseInt(assignYear), parseInt(assignMonth) - 1, parseInt(day))
+        .toISOString()
+        .split('T')[0];
+      
+      // For each staff member assigned to this shift
+      staffList.forEach((assignment) => {
+        const shiftKey = `${assignment.staffId}-${shiftDate}-${shiftType}`;
+        
+        // Skip if this exact shift assignment already exists (deduplication)
+        if (seenShifts.has(shiftKey)) {
+          console.warn(`Duplicate shift detected for ${assignment.staffId} on ${shiftDate} ${shiftType}, skipping`);
+          return;
+        }
+        
+        seenShifts.add(shiftKey);
+        
+        shiftsToCreate.push({
+          doctor_id: assignment.staffId,
+          shift_date: shiftDate,
+          shift_type: shiftType,
+          start_time: getShiftStartTime(shiftType),
+          end_time: getShiftEndTime(shiftType),
+          department_id: null,
+          status: 'Confirmed'
+        });
+      });
+    }
+
+    if (shiftsToCreate.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid shifts to publish'
+      });
+    }
+
+    console.log(`Publishing ${shiftsToCreate.length} shifts:`, JSON.stringify(shiftsToCreate, null, 2));
+
+    // Insert shifts into database
+    const { data, error } = await supabase
+      .from('shifts')
+      .insert(shiftsToCreate)
+      .select();
+
+    if (error) {
+      console.error('Error publishing schedule:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to publish schedule',
+        details: error.message 
+      });
+    }
+
+    console.log(`Successfully published ${data.length} shifts`);
+
+    return res.json({
+      success: true,
+      message: 'Schedule published successfully',
+      shiftsCreated: data.length,
+      shifts: data
+    });
+
+  } catch (error) {
+    console.error('Error publishing schedule:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: error.message 
+    });
+  }
+});
+
+// Get published shifts for a specific month
+router.get('/published/:year/:month', async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    
+    // Calculate date range for the month
+    const firstDay = new Date(parseInt(year), parseInt(month) - 1, 1)
+      .toISOString()
+      .split('T')[0];
+    const lastDay = new Date(parseInt(year), parseInt(month), 0)
+      .toISOString()
+      .split('T')[0];
+
+    const { data: shifts, error } = await supabase
+      .from('shifts')
+      .select(`
+        id,
+        doctor_id,
+        shift_date,
+        shift_type,
+        start_time,
+        end_time,
+        status,
+        doctors (
+          first_name,
+          last_name,
+          email,
+          specialization
+        )
+      `)
+      .gte('shift_date', firstDay)
+      .lte('shift_date', lastDay)
+      .eq('status', 'Confirmed')
+      .order('shift_date', { ascending: true })
+      .order('shift_type', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching published shifts:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch shifts',
+        details: error.message 
+      });
+    }
+
+    // Group by date and shift type
+    const groupedShifts = {};
+    shifts.forEach(shift => {
+      const key = `${shift.shift_date}-${shift.shift_type}`;
+      if (!groupedShifts[key]) {
+        groupedShifts[key] = [];
+      }
+      groupedShifts[key].push({
+        id: shift.id,
+        doctor: shift.doctors ? `${shift.doctors.first_name} ${shift.doctors.last_name}` : 'Unknown',
+        doctorId: shift.doctor_id,
+        email: shift.doctors?.email,
+        specialization: shift.doctors?.specialization,
+        startTime: shift.start_time,
+        endTime: shift.end_time,
+        status: shift.status
+      });
+    });
+
+    return res.json({
+      success: true,
+      year: parseInt(year),
+      month: parseInt(month),
+      shifts: groupedShifts,
+      totalShifts: shifts.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching published shifts:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      details: error.message 
+    });
+  }
+});
+
+// Helper function to get shift start time
+function getShiftStartTime(shiftType) {
+  const shiftTimes = {
+    'Morning Shift': '07:00:00',
+    'Afternoon Shift': '15:00:00',
+    'Evening Shift': '15:00:00',
+    'Night Shift': '23:00:00'
+  };
+  return shiftTimes[shiftType] || '07:00:00';
+}
+
+// Helper function to get shift end time
+function getShiftEndTime(shiftType) {
+  const shiftTimes = {
+    'Morning Shift': '15:00:00',
+    'Afternoon Shift': '23:00:00',
+    'Evening Shift': '23:00:00',
+    'Night Shift': '07:00:00'
+  };
+  return shiftTimes[shiftType] || '15:00:00';
+}
+
 export default router;

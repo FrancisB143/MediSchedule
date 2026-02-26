@@ -6,6 +6,7 @@ import shiftsRoutes from './routes/shifts.js';
 import shiftSwapRoutes from './routes/shift-swap.js';
 import leaveRequestsRoutes from './routes/leave-requests.js';
 import staffRoutes from './routes/staff.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/shifts', shiftsRoutes);
 app.use('/api/shift-swap', shiftSwapRoutes);
 app.use('/api/leave-requests', leaveRequestsRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

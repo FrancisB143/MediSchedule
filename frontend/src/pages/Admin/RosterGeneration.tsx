@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Swal from 'sweetalert2'
 
 interface Staff {
   id: string
@@ -16,6 +17,7 @@ interface Staff {
 interface Assignment {
   staffId: string
   staffName: string
+  isPublished?: boolean // Track if this assignment is from database
 }
 
 function RosterGeneration() {
@@ -26,6 +28,7 @@ function RosterGeneration() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [availableStaff, setAvailableStaff] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
+  const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState('')
   const [assignments, setAssignments] = useState<Record<string, Assignment[]>>({})
 
@@ -33,6 +36,11 @@ function RosterGeneration() {
   useEffect(() => {
     fetchStaffMembers()
   }, [])
+
+  // Fetch published shifts when month/year changes
+  useEffect(() => {
+    fetchPublishedShifts()
+  }, [currentDate])
 
   const fetchStaffMembers = async () => {
     try {
@@ -53,6 +61,210 @@ function RosterGeneration() {
     }
   }
 
+  const fetchPublishedShifts = async () => {
+    try {
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth() + 1
+      
+      const response = await fetch(`http://localhost:3001/api/shifts/published/${year}/${month}`)
+      const data = await response.json()
+
+      if (data.success && data.shifts) {
+        // Convert published shifts to assignment format for display
+        const publishedAssignments: Record<string, Assignment[]> = {}
+        
+        Object.entries(data.shifts).forEach(([key, doctors]: [string, any]) => {
+          // key is in format "YYYY-MM-DD-ShiftType"
+          const [dateStr, shiftTypeWithSuffix] = key.split(/(?<!\w)-(?!\d)/).slice(-2)
+          const dayMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+          
+          if (dayMatch) {
+            const [, keyYear, keyMonth, day] = dayMatch
+            const assignmentKey = `${keyYear}-${keyMonth}-${day}-${shiftTypeWithSuffix}`
+            
+            publishedAssignments[assignmentKey] = doctors.map((doc: any) => ({
+              staffId: doc.doctorId,
+              staffName: doc.doctor,
+              isPublished: true // Mark as published from database
+            }))
+          }
+        })
+        
+        // Merge published shifts with draft assignments (drafts take precedence)
+        setAssignments(prev => ({
+          ...publishedAssignments,
+          ...prev // Draft assignments override published ones
+        }))
+      }
+    } catch (err) {
+      console.error('Error fetching published shifts:', err)
+      // Don't show error for this - it's optional
+    }
+  }
+
+  const handlePublishSchedule = async () => {
+    if (assignedShifts === 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'No Assignments',
+        text: 'Please assign staff to shifts before publishing the schedule',
+        confirmButtonColor: '#3b82f6'
+      })
+      return
+    }
+
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Publish Schedule?',
+      html: `<div class="text-left">
+        <p class="mb-2">You are about to publish the schedule with:</p>
+        <ul class="list-disc list-inside">
+          <li><strong>${assignedShifts}</strong> shifts assigned</li>
+          <li><strong>${unassignedShifts}</strong> shifts unassigned</li>
+          <li><strong>${coverage}%</strong> coverage</li>
+        </ul>
+        <p class="mt-3 text-sm text-gray-600">This action will save all assignments to the database and make them visible to staff members.</p>
+      </div>`,
+      showCancelButton: true,
+      confirmButtonText: 'Publish Schedule',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#6b7280'
+    })
+
+    if (result.isConfirmed) {
+      setPublishing(true)
+      try {
+        const response = await fetch('http://localhost:3001/api/shifts/publish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            assignments,
+            month: currentDate.getMonth() + 1,
+            year: currentDate.getFullYear()
+          })
+        })
+
+        const data = await response.json()
+
+        if (data.success) {
+          // Fetch the published shifts to reload them and mark as published in the UI
+          try {
+            const publishedResponse = await fetch(
+              `http://localhost:3001/api/shifts/published/${currentDate.getFullYear()}/${currentDate.getMonth() + 1}`
+            );
+            const publishedData = await publishedResponse.json();
+
+            // Update assignments with published shifts
+            if (publishedData.success && publishedData.shifts) {
+              const publishedAssignments: Record<string, Assignment[]> = {}
+              
+              Object.entries(publishedData.shifts).forEach(([key, doctors]: [string, any]) => {
+                // key is in format "YYYY-MM-DD-ShiftType"
+                const [dateStr, shiftTypeWithSuffix] = key.split(/(?<!\w)-(?!\d)/).slice(-2)
+                const dayMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+                
+                if (dayMatch) {
+                  const [, keyYear, keyMonth, day] = dayMatch
+                  const assignmentKey = `${keyYear}-${keyMonth}-${day}-${shiftTypeWithSuffix}`
+                  
+                  publishedAssignments[assignmentKey] = doctors.map((doc: any) => ({
+                    staffId: doc.doctorId,
+                    staffName: doc.doctor,
+                    isPublished: true // Mark as published from database
+                  }))
+                }
+              })
+              
+              // Replace assignments with published versions to show them as published (blue)
+              setAssignments(publishedAssignments)
+            }
+
+            let shiftDetails = '';
+            if (publishedData.success && publishedData.totalShifts > 0) {
+              const shiftEntries = Object.entries(publishedData.shifts).slice(0, 3);
+              shiftDetails = '<div class="mt-3 text-sm text-gray-600">';
+              shiftEntries.forEach(([key, doctors]) => {
+                const [date, shiftType] = key.split('-').slice(2, 4).join('-').split('-');
+                shiftDetails += `<div class="mb-2"><strong>${shiftType}:</strong> ${doctors.map(d => d.doctor).join(', ')}</div>`;
+              });
+              shiftDetails += '</div>';
+            }
+
+            await Swal.fire({
+              icon: 'success',
+              title: 'Schedule Published!',
+              html: `<div class="text-left">
+                <p class="mb-2">Your schedule has been published successfully!</p>
+                <p class="text-sm text-gray-600"><strong>${data.shiftsCreated}</strong> shifts have been added to the system.</p>
+                ${shiftDetails}
+                <p class="text-xs text-gray-500 mt-3">Assignments are now visible on the calendar as published shifts (blue badges).</p>
+              </div>`,
+              confirmButtonColor: '#3b82f6'
+            })
+
+            // Dispatch custom event to notify other components (like AdminDashboard) to refresh
+            window.dispatchEvent(new Event('schedulePublished'))
+          } catch (err) {
+            console.error('Error fetching published shifts:', err);
+            await Swal.fire({
+              icon: 'success',
+              title: 'Schedule Published!',
+              html: `<div class="text-left">
+                <p class="mb-2">Your schedule has been published successfully!</p>
+                <p class="text-sm text-gray-600"><strong>${data.shiftsCreated}</strong> shifts have been added to the system.</p>
+                <p class="text-xs text-gray-500 mt-2">Refresh the page to see the updates reflected across the system.</p>
+              </div>`,
+              confirmButtonColor: '#3b82f6'
+            })
+          }
+        } else {
+          await Swal.fire({
+            icon: 'error',
+            title: 'Publishing Failed',
+            text: data.error || 'Failed to publish schedule. Please try again.',
+            confirmButtonColor: '#3b82f6'
+          })
+        }
+      } catch (err) {
+        console.error('Error publishing schedule:', err)
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'An error occurred while publishing the schedule. Please try again.',
+          confirmButtonColor: '#3b82f6'
+        })
+      } finally {
+        setPublishing(false)
+      }
+    }
+  }
+
+  const handleClearSchedule = async () => {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Clear Schedule?',
+      text: `This will remove all ${assignedShifts} assignments from the calendar. This does not affect already published shifts in the database.`,
+      showCancelButton: true,
+      confirmButtonText: 'Clear Schedule',
+      cancelButtonText: 'Keep It',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280'
+    })
+
+    if (result.isConfirmed) {
+      setAssignments({})
+      await Swal.fire({
+        icon: 'success',
+        title: 'Schedule Cleared',
+        text: 'All assignments have been cleared. You can now plan for the next period.',
+        confirmButtonColor: '#3b82f6'
+      })
+    }
+  }
+
   const departments = ['All Departments', 'Cardiology', 'Emergency', 'Surgery', 'Anesthesiology', 'Pediatrics', 'Neurology', 'Radiology', 'Oncology']
   const shifts = ['Morning Shift', 'Afternoon Shift', 'Evening Shift']
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -63,6 +275,14 @@ function RosterGeneration() {
     : availableStaff.filter(staff => staff.department === selectedDepartment)
 
   // Get calendar data
+  const getShiftCountForStaff = (staffId: string): number => {
+    let count = 0
+    for (const assignmentList of Object.values(assignments)) {
+      count += assignmentList.filter(a => a.staffId === staffId).length
+    }
+    return count
+  }
+
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const firstDay = new Date(year, month, 1).getDay()
@@ -96,6 +316,17 @@ function RosterGeneration() {
   const handleDrop = (day: number, shiftType: string) => {
     if (draggedStaff) {
       const key = `${year}-${month + 1}-${day}-${shiftType}`
+      
+      // Check if this doctor is already assigned to this shift
+      const existingAssignments = assignments[key] || []
+      const alreadyAssigned = existingAssignments.some(a => a.staffId === draggedStaff.id)
+      
+      if (alreadyAssigned) {
+        // Doctor is already assigned to this shift, don't add duplicate
+        setDraggedStaff(null)
+        return
+      }
+      
       const newAssignment = {
         staffId: draggedStaff.id,
         staffName: draggedStaff.name
@@ -156,11 +387,41 @@ function RosterGeneration() {
             </svg>
             <span className="font-medium">Save Draft</span>
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-sm hover:shadow-md">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-            <span className="font-medium">Publish Schedule</span>
+          {assignedShifts > 0 && (
+            <button 
+              onClick={handleClearSchedule}
+              className="flex items-center gap-2 px-6 py-3 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 shadow-sm hover:shadow"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3H4v2h16V7h-3z" />
+              </svg>
+              <span className="font-medium">Clear Schedule</span>
+            </button>
+          )}
+          <button 
+            onClick={handlePublishSchedule}
+            disabled={publishing}
+            className={`flex items-center gap-2 px-6 py-3 text-white rounded-lg transition-all duration-200 shadow-sm ${
+              publishing 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 hover:shadow-md'
+            }`}
+          >
+            {publishing ? (
+              <>
+                <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span className="font-medium">Publishing...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <span className="font-medium">Publish Schedule</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -244,7 +505,14 @@ function RosterGeneration() {
         {/* Available Staff Sidebar */}
         <div className="col-span-3">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 sticky top-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Available Staff</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Available Staff</h3>
+              {selectedDepartment !== 'All Departments' && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  {selectedDepartment}
+                </span>
+              )}
+            </div>
             
             {/* Loading State */}
             {loading ? (
@@ -262,17 +530,36 @@ function RosterGeneration() {
                     <div className="text-gray-500 text-sm">No staff available for {selectedDepartment}</div>
                   </div>
                 ) : (
-                  filteredStaff.map((staff) => (
-                    <div
-                      key={staff.id}
-                      draggable
-                      onDragStart={() => handleDragStart(staff)}
-                      className="p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg cursor-move hover:shadow-md transition-all duration-200 border border-blue-100"
-                    >
-                      <p className="font-medium text-gray-800">{staff.name}</p>
-                      <p className="text-sm text-gray-500">{staff.role}</p>
-                    </div>
-                  ))
+                  filteredStaff.map((staff) => {
+                    const shiftCount = getShiftCountForStaff(staff.id)
+                    return (
+                      <div
+                        key={staff.id}
+                        draggable
+                        onDragStart={() => handleDragStart(staff)}
+                        className={`p-3 rounded-lg cursor-move hover:shadow-md transition-all duration-200 border ${
+                          shiftCount > 0
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                            : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-100 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-gray-800">{staff.name}</p>
+                          {shiftCount > 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-600 text-white">
+                              {shiftCount} {shiftCount === 1 ? 'shift' : 'shifts'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-sm text-gray-600">{staff.department}</p>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            {staff.role}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })
                 )}
               </div>
             )}
@@ -377,10 +664,22 @@ function RosterGeneration() {
                           {assignmentList.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                               {assignmentList.map((assignment) => (
-                                <div key={assignment.staffId} className="relative group bg-white rounded-lg px-3 py-2 border border-green-200 flex items-center gap-2">
-                                  <div className="text-sm font-medium text-gray-800">
+                                <div 
+                                  key={assignment.staffId} 
+                                  className={`relative group rounded-lg px-3 py-2 border flex items-center gap-2 ${
+                                    assignment.isPublished
+                                      ? 'bg-blue-50 border-blue-300'
+                                      : 'bg-white border-green-200'
+                                  }`}
+                                >
+                                  <div className={`text-sm font-medium ${
+                                    assignment.isPublished ? 'text-blue-900' : 'text-gray-800'
+                                  }`}>
                                     {assignment.staffName}
                                   </div>
+                                  {assignment.isPublished && (
+                                    <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" title="Published"></span>
+                                  )}
                                   <button
                                     onClick={() => handleRemoveAssignment(key, assignment.staffId)}
                                     className="p-1 bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-100"

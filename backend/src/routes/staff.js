@@ -5,10 +5,34 @@ import { sendTemporaryPasswordEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
+// Normalize specialization to match frontend departments
+const normalizeDepartment = (specialization) => {
+  if (!specialization) return 'General';
+  
+  const normalized = specialization.toLowerCase().trim();
+  
+  // Mapping of specializations to display departments
+  const departmentMap = {
+    'cardiology': 'Cardiology',
+    'emergency': 'Emergency',
+    'emergency medicine': 'Emergency',
+    'surgery': 'Surgery',
+    'anesthesiology': 'Anesthesiology',
+    'pediatrics': 'Pediatrics',
+    'neurology': 'Neurology',
+    'radiology': 'Radiology',
+    'oncology': 'Oncology',
+    'internal medicine': 'Internal Medicine'
+  };
+  
+  return departmentMap[normalized] || specialization;
+};
+
 // Get all staff members (doctors)
 router.get('/', async (req, res) => {
   try {
-    const { data: doctors, error } = await supabase
+    // Try to fetch with department field, but fall back if it doesn't exist
+    let { data: doctors, error } = await supabase
       .from('doctors')
       .select(`
         id,
@@ -16,12 +40,32 @@ router.get('/', async (req, res) => {
         first_name,
         last_name,
         specialization,
+        department,
         phone,
         created_at
       `)
       .order('created_at', { ascending: false });
 
-    if (error) {
+    // If department field doesn't exist, fetch without it
+    if (error && error.message && error.message.includes('department')) {
+      const { data: doctorsWithoutDept, error: retryError } = await supabase
+        .from('doctors')
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          specialization,
+          phone,
+          created_at
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (retryError) {
+        return res.status(500).json({ error: 'Failed to fetch staff members', details: retryError });
+      }
+      doctors = doctorsWithoutDept;
+    } else if (error) {
       return res.status(500).json({ error: 'Failed to fetch staff members', details: error });
     }
 
@@ -30,7 +74,8 @@ router.get('/', async (req, res) => {
       id: doctor.id,
       name: `${doctor.first_name} ${doctor.last_name}`,
       role: doctor.specialization || 'Doctor',
-      department: 'Not Assigned', // For now, since department_id doesn't exist
+      // Use stored department if available, otherwise normalize specialization
+      department: doctor.department ? normalizeDepartment(doctor.department) : normalizeDepartment(doctor.specialization),
       status: 'Available', // Default status
       statusColor: 'green',
       email: doctor.email,
@@ -66,7 +111,7 @@ router.post('/', async (req, res) => {
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
     // Insert new doctor
-    const { data: newDoctor, error } = await supabase
+    let { data: newDoctor, error } = await supabase
       .from('doctors')
       .insert({
         email,
@@ -74,13 +119,33 @@ router.post('/', async (req, res) => {
         first_name: firstName,
         last_name: lastName,
         specialization: role,
+        department: department || role, // Store department, fallback to role/specialization
         phone: phone || null
-        // department_id and status will be added later when the schema is updated
       })
       .select()
       .single();
 
-    if (error) {
+    // If department field doesn't exist, retry without it
+    if (error && error.message && error.message.includes('department')) {
+      const { data: doctorWithoutDept, error: retryError } = await supabase
+        .from('doctors')
+        .insert({
+          email,
+          password_hash: hashedPassword,
+          first_name: firstName,
+          last_name: lastName,
+          specialization: role,
+          phone: phone || null
+        })
+        .select()
+        .single();
+      
+      if (retryError) {
+        console.error('Database error:', retryError);
+        return res.status(500).json({ error: 'Failed to create staff member', details: retryError });
+      }
+      newDoctor = doctorWithoutDept;
+    } else if (error) {
       console.error('Database error:', error);
       return res.status(500).json({ error: 'Failed to create staff member', details: error });
     }
@@ -106,7 +171,7 @@ router.post('/', async (req, res) => {
         id: newDoctor.id,
         name: fullName,
         role: newDoctor.specialization,
-        department: 'Not Assigned',
+        department: normalizeDepartment(newDoctor.department || department || role),
         status: 'Available',
         email: newDoctor.email,
         phone: newDoctor.phone
