@@ -51,6 +51,18 @@ function StaffDirectory() {
   // Fetch staff members on component mount
   useEffect(() => {
     fetchStaffMembers()
+    
+    // Listen for schedule publish events to refresh staff shift counts
+    const handleSchedulePublished = () => {
+      console.log('Schedule published event received, refreshing staff directory...')
+      fetchStaffMembers()
+    }
+    
+    window.addEventListener('schedulePublished', handleSchedulePublished)
+    
+    return () => {
+      window.removeEventListener('schedulePublished', handleSchedulePublished)
+    }
   }, [])
 
   const fetchStaffMembers = async () => {

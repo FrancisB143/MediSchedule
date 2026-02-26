@@ -13,6 +13,13 @@ interface DepartmentStat {
   count: number
 }
 
+interface WeeklyCoverage {
+  day: string
+  shifts: number
+  coverage: number
+  date: string
+}
+
 function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalDoctors: 0,
@@ -21,18 +28,16 @@ function AdminDashboard() {
     coverageRate: 0
   })
   const [departmentStats, setDepartmentStats] = useState<DepartmentStat[]>([])
+  const [weeklyData, setWeeklyData] = useState<WeeklyCoverage[]>([
+    { day: 'Sun', shifts: 0, coverage: 0, date: '' },
+    { day: 'Mon', shifts: 0, coverage: 0, date: '' },
+    { day: 'Tue', shifts: 0, coverage: 0, date: '' },
+    { day: 'Wed', shifts: 0, coverage: 0, date: '' },
+    { day: 'Thu', shifts: 0, coverage: 0, date: '' },
+    { day: 'Fri', shifts: 0, coverage: 0, date: '' },
+    { day: 'Sat', shifts: 0, coverage: 0, date: '' }
+  ])
   const [loading, setLoading] = useState(true)
-
-  // Weekly coverage data
-  const weeklyData = [
-    { day: 'Mon', shifts: 145, coverage: 92 },
-    { day: 'Tue', shifts: 162, coverage: 95 },
-    { day: 'Wed', shifts: 142, coverage: 89 },
-    { day: 'Thu', shifts: 168, coverage: 98 },
-    { day: 'Fri', shifts: 152, coverage: 91 },
-    { day: 'Sat', shifts: 132, coverage: 88 },
-    { day: 'Sun', shifts: 128, coverage: 86 }
-  ]
 
   useEffect(() => {
     fetchDashboardStats()
@@ -53,16 +58,19 @@ function AdminDashboard() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true)
-      const [statsResponse, deptResponse] = await Promise.all([
+      const [statsResponse, deptResponse, weeklyResponse] = await Promise.all([
         fetch('http://localhost:3001/api/admin/stats'),
-        fetch('http://localhost:3001/api/admin/staff-by-department')
+        fetch('http://localhost:3001/api/admin/staff-by-department'),
+        fetch('http://localhost:3001/api/admin/weekly-coverage')
       ])
       
       const statsData = await statsResponse.json()
       const deptData = await deptResponse.json()
+      const weeklyResult = await weeklyResponse.json()
 
       console.log('Stats response:', statsData)
       console.log('Department response:', deptData)
+      console.log('Weekly coverage response:', weeklyResult)
 
       if (statsData.success) {
         setStats(statsData.stats)
@@ -75,6 +83,13 @@ function AdminDashboard() {
         setDepartmentStats(deptData.staffByDepartment)
       } else {
         console.error('Department request failed:', deptData)
+      }
+      
+      if (weeklyResult.success && weeklyResult.weeklyData) {
+        console.log('Setting weekly data:', weeklyResult.weeklyData)
+        setWeeklyData(weeklyResult.weeklyData)
+      } else {
+        console.error('Weekly coverage request failed:', weeklyResult)
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err)

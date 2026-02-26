@@ -73,22 +73,33 @@ function RosterGeneration() {
         // Convert published shifts to assignment format for display
         const publishedAssignments: Record<string, Assignment[]> = {}
         
+        console.log('Published shifts from backend:', data.shifts);
+        
         Object.entries(data.shifts).forEach(([key, doctors]: [string, any]) => {
           // key is in format "YYYY-MM-DD-ShiftType"
-          const [dateStr, shiftTypeWithSuffix] = key.split(/(?<!\w)-(?!\d)/).slice(-2)
-          const dayMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+          // Match the date part (YYYY-MM-DD) and everything after as shift type
+          const keyMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})-(.+)$/)
           
-          if (dayMatch) {
-            const [, keyYear, keyMonth, day] = dayMatch
-            const assignmentKey = `${keyYear}-${keyMonth}-${day}-${shiftTypeWithSuffix}`
+          if (keyMatch) {
+            const [, keyYear, keyMonth, keyDay, shiftType] = keyMatch
+            // Remove leading zeros from month and day to match frontend format
+            const month = parseInt(keyMonth)
+            const day = parseInt(keyDay)
+            const assignmentKey = `${keyYear}-${month}-${day}-${shiftType}`
+            
+            console.log(`Parsing: ${key} -> ${assignmentKey}`);
             
             publishedAssignments[assignmentKey] = doctors.map((doc: any) => ({
               staffId: doc.doctorId,
               staffName: doc.doctor,
               isPublished: true // Mark as published from database
             }))
+          } else {
+            console.warn('Failed to parse key:', key);
           }
         })
+        
+        console.log('Converted published assignments:', publishedAssignments);
         
         // Merge published shifts with draft assignments (drafts take precedence)
         setAssignments(prev => ({
@@ -103,6 +114,10 @@ function RosterGeneration() {
   }
 
   const handlePublishSchedule = async () => {
+    console.log('=== PUBLISH SCHEDULE CLICKED ===');
+    console.log('Current assignments:', assignments);
+    console.log('Assigned shifts count:', assignedShifts);
+    
     if (assignedShifts === 0) {
       await Swal.fire({
         icon: 'warning',
@@ -134,6 +149,13 @@ function RosterGeneration() {
 
     if (result.isConfirmed) {
       setPublishing(true)
+      console.log('User confirmed publish. Sending to backend...');
+      console.log('Payload:', {
+        assignments,
+        month: currentDate.getMonth() + 1,
+        year: currentDate.getFullYear()
+      });
+      
       try {
         const response = await fetch('http://localhost:3001/api/shifts/publish', {
           method: 'POST',
@@ -148,6 +170,7 @@ function RosterGeneration() {
         })
 
         const data = await response.json()
+        console.log('Backend response:', data);
 
         if (data.success) {
           // Fetch the published shifts to reload them and mark as published in the UI
@@ -163,12 +186,14 @@ function RosterGeneration() {
               
               Object.entries(publishedData.shifts).forEach(([key, doctors]: [string, any]) => {
                 // key is in format "YYYY-MM-DD-ShiftType"
-                const [dateStr, shiftTypeWithSuffix] = key.split(/(?<!\w)-(?!\d)/).slice(-2)
-                const dayMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+                const keyMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})-(.+)$/)
                 
-                if (dayMatch) {
-                  const [, keyYear, keyMonth, day] = dayMatch
-                  const assignmentKey = `${keyYear}-${keyMonth}-${day}-${shiftTypeWithSuffix}`
+                if (keyMatch) {
+                  const [, keyYear, keyMonth, keyDay, shiftType] = keyMatch
+                  // Remove leading zeros from month and day to match frontend format
+                  const month = parseInt(keyMonth)
+                  const day = parseInt(keyDay)
+                  const assignmentKey = `${keyYear}-${month}-${day}-${shiftType}`
                   
                   publishedAssignments[assignmentKey] = doctors.map((doc: any) => ({
                     staffId: doc.doctorId,
@@ -316,6 +341,7 @@ function RosterGeneration() {
   const handleDrop = (day: number, shiftType: string) => {
     if (draggedStaff) {
       const key = `${year}-${month + 1}-${day}-${shiftType}`
+      console.log('Dropping staff:', draggedStaff.name, 'to', key);
       
       // Check if this doctor is already assigned to this shift
       const existingAssignments = assignments[key] || []

@@ -1,7 +1,7 @@
 // Brevo Email Service - Send emails via Brevo API
-// API Key: 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
+// API Key: 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
 // Verified Sender: kbaltazar_230000000268@uic.edu.ph
-const BREVO_API_KEY = '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';
+const BREVO_API_KEY = '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';
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 const SENDER_EMAIL = 'kbaltazar_230000000268@uic.edu.ph';
 const SENDER_NAME = 'MediSchedule';

@@ -193,14 +193,20 @@ router.get('/doctor/:doctorId/upcoming', async (req, res) => {
 // Publish roster/schedule - saves assignments to the database
 router.post('/publish', async (req, res) => {
   try {
+    console.log('=== PUBLISH REQUEST RECEIVED ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const { assignments, month, year } = req.body;
 
     if (!assignments || Object.keys(assignments).length === 0) {
+      console.log('ERROR: No assignments provided');
       return res.status(400).json({ 
         success: false, 
         error: 'No assignments to publish' 
       });
     }
+    
+    console.log('Number of assignment keys:', Object.keys(assignments).length);
 
     // Convert assignments object to array of shift entries
     const shiftsToCreate = [];
@@ -217,9 +223,13 @@ router.post('/publish', async (req, res) => {
       }
       
       const [, assignYear, assignMonth, day, shiftType] = keyMatch;
-      const shiftDate = new Date(parseInt(assignYear), parseInt(assignMonth) - 1, parseInt(day))
-        .toISOString()
-        .split('T')[0];
+      
+      // Format date as YYYY-MM-DD without timezone conversion
+      const paddedMonth = String(assignMonth).padStart(2, '0');
+      const paddedDay = String(day).padStart(2, '0');
+      const shiftDate = `${assignYear}-${paddedMonth}-${paddedDay}`;
+      
+      console.log(`Parsed key: ${key} -> Date: ${shiftDate}, Shift: ${shiftType}`);
       
       // For each staff member assigned to this shift
       staffList.forEach((assignment) => {

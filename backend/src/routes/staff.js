@@ -69,6 +69,40 @@ router.get('/', async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch staff members', details: error });
     }
 
+    // Get current month's date range
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+    
+    // Calculate last day without timezone conversion issues
+    const lastDayDate = new Date(year, month, 0); // Last day of current month
+    const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+
+    console.log(`Fetching shifts for ${firstDay} to ${lastDay}`);
+
+    // Fetch shift counts for all doctors for the current month
+    const { data: shiftCounts, error: shiftsError } = await supabase
+      .from('shifts')
+      .select('doctor_id, shift_date')
+      .gte('shift_date', firstDay)
+      .lte('shift_date', lastDay)
+      .eq('status', 'Confirmed');
+
+    console.log('Shift counts query result:', shiftCounts?.length || 0, 'shifts found');
+    if (shiftsError) {
+      console.error('Error fetching shift counts:', shiftsError);
+    }
+
+    // Create a map of doctor_id to shift count
+    const shiftCountMap = {};
+    if (shiftCounts && !shiftsError) {
+      shiftCounts.forEach(shift => {
+        shiftCountMap[shift.doctor_id] = (shiftCountMap[shift.doctor_id] || 0) + 1;
+      });
+      console.log('Shift count map:', shiftCountMap);
+    }
+
     // Transform data to match frontend expectations
     const staffMembers = doctors.map(doctor => ({
       id: doctor.id,
@@ -80,7 +114,7 @@ router.get('/', async (req, res) => {
       statusColor: 'green',
       email: doctor.email,
       phone: doctor.phone || '',
-      shifts: 0, // This would need to be calculated from shifts table
+      shifts: shiftCountMap[doctor.id] || 0, // Get actual shift count for current month
       initials: `${doctor.first_name?.[0] || ''}${doctor.last_name?.[0] || ''}`.toUpperCase()
     }));
 
