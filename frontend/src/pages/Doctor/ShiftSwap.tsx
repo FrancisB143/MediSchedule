@@ -42,6 +42,7 @@ interface Colleague {
   specialization: string
   initials: string
   available: boolean
+  reason?: string | null
 }
 
 function ShiftSwap() {
@@ -153,19 +154,51 @@ function ShiftSwap() {
 
   const handleSendRequest = async () => {
     if (selectedShift && selectedColleague) {
-      // Database insertion disabled - just show success message
-      setShowModal(false)
-      setSelectedShift(null)
-      setSelectedColleague(null)
-      setSearchQuery('')
+      try {
+        const response = await fetch('http://localhost:3001/api/shift-swap', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requesterDoctorId: doctorId,
+            requesterShiftId: selectedShift,
+            targetDoctorId: selectedColleague
+          })
+        })
 
-      // Show success alert
-      Swal.fire({
-        icon: 'success',
-        title: 'Request Sent!',
-        text: 'Your shift swap request has been sent successfully.',
-        confirmButtonColor: '#3b82f6'
-      })
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to create swap request')
+        }
+
+        setShowModal(false)
+        setSelectedShift(null)
+        setSelectedColleague(null)
+        setSearchQuery('')
+
+        // Refresh pending requests list
+        const requestsResponse = await fetch(`http://localhost:3001/api/shift-swap/doctor/${doctorId}`)
+        const requestsData = await requestsResponse.json()
+        if (requestsData.success) {
+          setPendingRequests(requestsData.requests)
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Sent!',
+          text: 'Swap request submitted and is pending coworker approval.',
+          confirmButtonColor: '#3b82f6'
+        })
+      } catch (err: any) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Unable to Send Request',
+          text: err.message || 'Failed to create swap request. Please try again.',
+          confirmButtonColor: '#3b82f6'
+        })
+      }
     }
   }
 
@@ -482,9 +515,14 @@ function ShiftSwap() {
                             </div>
                             {/* Availability Badge */}
                             {!colleague.available && (
-                              <span className="px-3 py-1 bg-gray-400 text-white text-xs font-medium rounded-full">
-                                Unavailable
-                              </span>
+                              <div className="text-right max-w-[220px]">
+                                <span className="px-3 py-1 bg-gray-400 text-white text-xs font-medium rounded-full">
+                                  Unavailable
+                                </span>
+                                {colleague.reason && (
+                                  <p className="text-xs text-gray-500 mt-2">{colleague.reason}</p>
+                                )}
+                              </div>
                             )}
                           </div>
                         ))}

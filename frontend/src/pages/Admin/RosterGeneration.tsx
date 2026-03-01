@@ -20,6 +20,52 @@ interface Assignment {
   isPublished?: boolean // Track if this assignment is from database
 }
 
+const padNumber = (value: number) => String(value).padStart(2, '0')
+
+const getAssignmentKey = (year: number, month: number, day: number, shiftType: string) => {
+  return `${year}-${padNumber(month)}-${padNumber(day)}-${shiftType}`
+}
+
+const parseAssignmentKey = (key: string) => {
+  const keyMatch = key.match(/^(\d{4})-(\d{1,2})-(\d{1,2})-(.+)$/)
+  if (!keyMatch) {
+    return null
+  }
+
+  return {
+    year: Number(keyMatch[1]),
+    month: Number(keyMatch[2]),
+    day: Number(keyMatch[3]),
+    shiftType: keyMatch[4]
+  }
+}
+
+const normalizeAssignmentMap = (inputAssignments: Record<string, Assignment[]>) => {
+  const normalized: Record<string, Assignment[]> = {}
+
+  Object.entries(inputAssignments).forEach(([rawKey, assignmentList]) => {
+    const parsed = parseAssignmentKey(rawKey)
+    if (!parsed) {
+      return
+    }
+
+    const normalizedKey = getAssignmentKey(parsed.year, parsed.month, parsed.day, parsed.shiftType)
+    const currentAssignments = normalized[normalizedKey] || []
+
+    const merged = [...currentAssignments]
+    assignmentList.forEach((assignment) => {
+      const alreadyExists = merged.some((existing) => existing.staffId === assignment.staffId)
+      if (!alreadyExists) {
+        merged.push(assignment)
+      }
+    })
+
+    normalized[normalizedKey] = merged
+  })
+
+  return normalized
+}
+
 function RosterGeneration() {
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments')
   const [draggedStaff, setDraggedStaff] = useState<Staff | null>(null)
@@ -82,10 +128,12 @@ function RosterGeneration() {
           
           if (keyMatch) {
             const [, keyYear, keyMonth, keyDay, shiftType] = keyMatch
-            // Remove leading zeros from month and day to match frontend format
-            const month = parseInt(keyMonth)
-            const day = parseInt(keyDay)
-            const assignmentKey = `${keyYear}-${month}-${day}-${shiftType}`
+            const assignmentKey = getAssignmentKey(
+              Number(keyYear),
+              Number(keyMonth),
+              Number(keyDay),
+              shiftType
+            )
             
             console.log(`Parsing: ${key} -> ${assignmentKey}`);
             
@@ -102,7 +150,7 @@ function RosterGeneration() {
         console.log('Converted published assignments:', publishedAssignments);
         
         // Merge published shifts with draft assignments (drafts take precedence)
-        setAssignments(prev => ({
+        setAssignments(prev => normalizeAssignmentMap({
           ...publishedAssignments,
           ...prev // Draft assignments override published ones
         }))
@@ -190,10 +238,12 @@ function RosterGeneration() {
                 
                 if (keyMatch) {
                   const [, keyYear, keyMonth, keyDay, shiftType] = keyMatch
-                  // Remove leading zeros from month and day to match frontend format
-                  const month = parseInt(keyMonth)
-                  const day = parseInt(keyDay)
-                  const assignmentKey = `${keyYear}-${month}-${day}-${shiftType}`
+                  const assignmentKey = getAssignmentKey(
+                    Number(keyYear),
+                    Number(keyMonth),
+                    Number(keyDay),
+                    shiftType
+                  )
                   
                   publishedAssignments[assignmentKey] = doctors.map((doc: any) => ({
                     staffId: doc.doctorId,
@@ -204,16 +254,17 @@ function RosterGeneration() {
               })
               
               // Replace assignments with published versions to show them as published (blue)
-              setAssignments(publishedAssignments)
+              setAssignments(normalizeAssignmentMap(publishedAssignments))
             }
 
             let shiftDetails = '';
             if (publishedData.success && publishedData.totalShifts > 0) {
-              const shiftEntries = Object.entries(publishedData.shifts).slice(0, 3);
+              const shiftEntries = Object.entries(publishedData.shifts).slice(0, 3) as [string, any[]][];
               shiftDetails = '<div class="mt-3 text-sm text-gray-600">';
               shiftEntries.forEach(([key, doctors]) => {
-                const [date, shiftType] = key.split('-').slice(2, 4).join('-').split('-');
-                shiftDetails += `<div class="mb-2"><strong>${shiftType}:</strong> ${doctors.map(d => d.doctor).join(', ')}</div>`;
+                const keyMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})-(.+)$/)
+                const shiftType = keyMatch ? keyMatch[4] : key
+                shiftDetails += `<div class="mb-2"><strong>${shiftType}:</strong> ${doctors.map((doctor) => doctor.doctor).join(', ')}</div>`;
               });
               shiftDetails += '</div>';
             }
@@ -299,20 +350,31 @@ function RosterGeneration() {
     ? availableStaff
     : availableStaff.filter(staff => staff.department === selectedDepartment)
 
-  // Get calendar data
-  const getShiftCountForStaff = (staffId: string): number => {
-    let count = 0
-    for (const assignmentList of Object.values(assignments)) {
-      count += assignmentList.filter(a => a.staffId === staffId).length
-    }
-    return count
-  }
-
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const monthName = currentDate.toLocaleString('default', { month: 'long' })
+
+  // Get calendar data
+  const getShiftCountForStaff = (staffId: string): number => {
+    let count = 0
+
+    for (const [key, assignmentList] of Object.entries(assignments)) {
+      const parsed = parseAssignmentKey(key)
+      if (!parsed) {
+        continue
+      }
+
+      if (parsed.year !== year || parsed.month !== month + 1) {
+        continue
+      }
+
+      count += assignmentList.filter(a => a.staffId === staffId).length
+    }
+
+    return count
+  }
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1))
@@ -340,27 +402,27 @@ function RosterGeneration() {
 
   const handleDrop = (day: number, shiftType: string) => {
     if (draggedStaff) {
-      const key = `${year}-${month + 1}-${day}-${shiftType}`
+      const key = getAssignmentKey(year, month + 1, day, shiftType)
       console.log('Dropping staff:', draggedStaff.name, 'to', key);
-      
-      // Check if this doctor is already assigned to this shift
-      const existingAssignments = assignments[key] || []
-      const alreadyAssigned = existingAssignments.some(a => a.staffId === draggedStaff.id)
-      
-      if (alreadyAssigned) {
-        // Doctor is already assigned to this shift, don't add duplicate
-        setDraggedStaff(null)
-        return
-      }
       
       const newAssignment = {
         staffId: draggedStaff.id,
         staffName: draggedStaff.name
       }
-      
-      setAssignments({
-        ...assignments,
-        [key]: [...(assignments[key] || []), newAssignment]
+
+      setAssignments(prevAssignments => {
+        const normalizedPrevAssignments = normalizeAssignmentMap(prevAssignments)
+        const existingAssignments = normalizedPrevAssignments[key] || []
+        const alreadyAssigned = existingAssignments.some(a => a.staffId === draggedStaff.id)
+
+        if (alreadyAssigned) {
+          return normalizedPrevAssignments
+        }
+
+        return normalizeAssignmentMap({
+          ...normalizedPrevAssignments,
+          [key]: [...existingAssignments, newAssignment]
+        })
       })
       setDraggedStaff(null)
     }
@@ -378,10 +440,20 @@ function RosterGeneration() {
   }
 
   const getAssignmentsForDay = (day: number) => {
-    const count = shifts.reduce((total, shift) => {
-      const key = `${year}-${month + 1}-${day}-${shift}`
-      return total + (assignments[key]?.length || 0)
+    const count = Object.entries(assignments).reduce((total, [key, assignmentList]) => {
+      const parsed = parseAssignmentKey(key)
+
+      if (!parsed) {
+        return total
+      }
+
+      if (parsed.year !== year || parsed.month !== month + 1 || parsed.day !== day) {
+        return total
+      }
+
+      return total + assignmentList.length
     }, 0)
+
     return count
   }
 
@@ -668,7 +740,7 @@ function RosterGeneration() {
                 </h3>
                 <div className="space-y-6">
                   {shifts.map((shift) => {
-                    const key = `${year}-${month + 1}-${selectedDay}-${shift}`
+                    const key = getAssignmentKey(year, month + 1, selectedDay, shift)
                     const assignmentList = assignments[key] || []
                     
                     return (

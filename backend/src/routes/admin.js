@@ -27,7 +27,7 @@ router.get('/stats', async (req, res) => {
     const { data: pendingShiftSwaps, error: swapError } = await supabase
       .from('shift_swap_requests')
       .select('id', { count: 'exact' })
-      .eq('status', 'Pending');
+      .in('status', ['Pending', 'Pending Coworker Approval', 'Pending Admin Approval']);
 
     if (leaveError || swapError) {
       console.error('Error fetching pending requests:', leaveError || swapError);

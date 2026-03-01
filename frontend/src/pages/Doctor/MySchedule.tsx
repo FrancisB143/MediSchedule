@@ -102,10 +102,16 @@ function MySchedule() {
     return new Date(year, month, 1).getDay()
   }
 
+  const formatLocalDate = (year: number, monthIndex: number, day: number) => {
+    const month = String(monthIndex + 1).padStart(2, '0')
+    const dayOfMonth = String(day).padStart(2, '0')
+    return `${year}-${month}-${dayOfMonth}`
+  }
+
   const getShiftsForDate = (date: number) => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
-    const dateStr = new Date(year, month, date).toISOString().split('T')[0]
+    const dateStr = formatLocalDate(year, month, date)
     return shifts.filter(shift => shift.date === dateStr)
   }
 

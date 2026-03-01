@@ -48,7 +48,7 @@ CREATE TABLE shift_swap_requests (
     requester_shift_id UUID NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
     target_doctor_id UUID NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
     target_shift_id UUID NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
-    status VARCHAR(20) DEFAULT 'Pending', -- 'Pending', 'Approved', 'Rejected', 'Cancelled'
+    status VARCHAR(50) DEFAULT 'Pending Coworker Approval', -- 'Pending Coworker Approval', 'Declined by Coworker', 'Pending Admin Approval', 'Approved', 'Rejected by Admin', 'Cancelled'
     requested_date DATE NOT NULL DEFAULT CURRENT_DATE,
     response_date DATE,
     notes TEXT,

@@ -80,3 +80,67 @@ export const sendTemporaryPasswordEmail = async (email, name, temporaryPassword)
     return { success: false, error: error.message };
   }
 };
+
+export const sendSwapStatusNotificationEmail = async ({ email, name, subject, heading, message, details = [] }) => {
+  try {
+    if (!BREVO_API_KEY) {
+      console.warn('BREVO_API_KEY is not configured. Swap notification email skipped.');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const detailsHtml = (details || [])
+      .map((item) => `<li style="margin-bottom: 6px;">${item}</li>`)
+      .join('');
+
+    const mailOptions = {
+      sender: {
+        email: SENDER_EMAIL,
+        name: SENDER_NAME
+      },
+      to: [
+        {
+          email,
+          name
+        }
+      ],
+      subject,
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 8px;">
+          <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h2 style="color: #2563eb; margin-top: 0;">${heading}</h2>
+            <p>Dear ${name},</p>
+            <p>${message}</p>
+            ${detailsHtml ? `<ul style="padding-left: 20px; color: #374151;">${detailsHtml}</ul>` : ''}
+            <p>You can review this in your MediSchedule dashboard.</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">Best regards,<br><strong>The MediSchedule Team</strong></p>
+          </div>
+        </div>
+      `
+    };
+
+    const response = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': BREVO_API_KEY
+      },
+      body: JSON.stringify(mailOptions)
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error('Brevo API error response:', responseData);
+      return {
+        success: false,
+        error: responseData.message || responseData.detail || 'Failed to send swap notification email'
+      };
+    }
+
+    return { success: true, messageId: responseData.messageId };
+  } catch (error) {
+    console.error('Error sending swap notification email to', email, ':', error.message);
+    return { success: false, error: error.message };
+  }
+};
