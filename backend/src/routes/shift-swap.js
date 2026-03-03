@@ -709,6 +709,73 @@ router.patch('/:requestId/admin-review', async (req, res) => {
   }
 });
 
+// Get all shift swap requests pending admin approval (admin view)
+router.get('/admin/pending', async (req, res) => {
+  try {
+    const { data: requests, error } = await supabase
+      .from('shift_swap_requests')
+      .select(`
+        *,
+        requester_shift:shifts!requester_shift_id (
+          shift_date, shift_type, start_time, end_time,
+          departments (name)
+        ),
+        target_shift:shifts!target_shift_id (
+          shift_date, shift_type, start_time, end_time,
+          departments (name)
+        ),
+        requester_doctor:doctors!requester_doctor_id (
+          id, first_name, last_name, specialization, email
+        ),
+        target_doctor:doctors!target_doctor_id (
+          id, first_name, last_name, specialization, email
+        )
+      `)
+      .eq('status', REQUEST_STATUS.PENDING_ADMIN)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to fetch pending admin swap requests', details: error });
+    }
+
+    const formatted = (requests || []).map(r => ({
+      id: r.id,
+      status: r.status,
+      requestedDate: r.requested_date,
+      notes: r.notes || null,
+      requesterDoctor: {
+        id: r.requester_doctor.id,
+        name: `Dr. ${r.requester_doctor.first_name} ${r.requester_doctor.last_name}`,
+        specialization: r.requester_doctor.specialization
+      },
+      targetDoctor: {
+        id: r.target_doctor.id,
+        name: `Dr. ${r.target_doctor.first_name} ${r.target_doctor.last_name}`,
+        specialization: r.target_doctor.specialization
+      },
+      requesterShift: {
+        date: r.requester_shift.shift_date,
+        type: r.requester_shift.shift_type,
+        startTime: r.requester_shift.start_time,
+        endTime: r.requester_shift.end_time,
+        department: r.requester_shift.departments?.name || 'N/A'
+      },
+      targetShift: {
+        date: r.target_shift.shift_date,
+        type: r.target_shift.shift_type,
+        startTime: r.target_shift.start_time,
+        endTime: r.target_shift.end_time,
+        department: r.target_shift.departments?.name || 'N/A'
+      }
+    }));
+
+    return res.json({ success: true, requests: formatted });
+  } catch (error) {
+    console.error('Error fetching admin pending swap requests:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Cancel a swap request
 router.delete('/:requestId', async (req, res) => {
   try {

@@ -25,11 +25,24 @@ interface Request {
   }
 }
 
+interface SwapRequest {
+  id: string
+  status: string
+  requestedDate: string
+  notes?: string | null
+  requesterDoctor: { id: string; name: string; specialization: string }
+  targetDoctor: { id: string; name: string; specialization: string }
+  requesterShift: { date: string; type: string; startTime: string; endTime: string; department: string }
+  targetShift: { date: string; type: string; startTime: string; endTime: string; department: string }
+}
+
 function Requests() {
+  const [activeTab, setActiveTab] = useState<'leave' | 'swap'>('leave')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
   const [selectedType, setSelectedType] = useState('All Types')
   const [requests, setRequests] = useState<Request[]>([])
+  const [swapRequests, setSwapRequests] = useState<SwapRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
@@ -38,7 +51,18 @@ function Requests() {
 
   useEffect(() => {
     fetchLeaveRequests()
+    fetchSwapRequests()
   }, [])
+
+  const fetchSwapRequests = async () => {
+    try {
+      const res = await fetch('http://localhost:3001/api/shift-swap/admin/pending')
+      const data = await res.json()
+      if (data.success) setSwapRequests(data.requests)
+    } catch (error) {
+      console.error('Error fetching swap requests:', error)
+    }
+  }
 
   const fetchLeaveRequests = async () => {
     try {
@@ -183,6 +207,68 @@ function Requests() {
     }
   }
 
+  const handleApproveSwap = async (requestId: string) => {
+    const result = await Swal.fire({
+      title: 'Approve Shift Swap?',
+      text: 'This will permanently swap both doctors\u2019 shifts.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Approve',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    })
+    if (!result.isConfirmed) return
+    try {
+      setProcessingId(requestId)
+      const res = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/admin-review`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId, action: 'approve' })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        Swal.fire({ icon: 'success', title: 'Approved!', text: 'Shift swap approved and schedules updated.', confirmButtonColor: '#10b981', timer: 2000, showConfirmButton: false })
+        fetchSwapRequests()
+      } else throw new Error(data.error || 'Failed to approve')
+    } catch (err: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message, confirmButtonColor: '#3b82f6' })
+    } finally { setProcessingId(null) }
+  }
+
+  const handleRejectSwap = async (requestId: string) => {
+    const result = await Swal.fire({
+      title: 'Reject Shift Swap?',
+      input: 'textarea',
+      inputLabel: 'Rejection Reason (Optional)',
+      inputPlaceholder: 'Enter reason for rejection...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Reject',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    })
+    if (!result.isConfirmed) return
+    try {
+      setProcessingId(requestId)
+      const res = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/admin-review`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId, action: 'reject', rejectionReason: result.value || 'Rejected by admin' })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        Swal.fire({ icon: 'info', title: 'Rejected', text: 'Shift swap rejected.', confirmButtonColor: '#3b82f6', timer: 2000, showConfirmButton: false })
+        fetchSwapRequests()
+      } else throw new Error(data.error || 'Failed to reject')
+    } catch (err: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message, confirmButtonColor: '#3b82f6' })
+    } finally { setProcessingId(null) }
+  }
+
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
   }
@@ -223,6 +309,14 @@ function Requests() {
   const approvedCount = requests.filter(r => r.status === 'Approved').length
   const rejectedCount = requests.filter(r => r.status === 'Rejected').length
 
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minutes} ${ampm}`
+  }
+
   const getStatusStyle = (status: string) => {
     switch(status) {
       case 'Pending':
@@ -261,6 +355,44 @@ function Requests() {
 
   return (
     <div className="p-8">
+      {/* Tabs */}
+      <div className="flex gap-2 mb-8">
+        <button
+          onClick={() => setActiveTab('leave')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+            activeTab === 'leave' ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Leave Requests
+          {pendingCount > 0 && (
+            <span className="inline-flex items-center justify-center w-5 h-5 bg-yellow-500 text-white text-xs font-bold rounded-full">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('swap')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+            activeTab === 'swap' ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          Shift Swap Requests
+          {swapRequests.length > 0 && (
+            <span className="inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">
+              {swapRequests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'leave' && (
+        <>
       {/* Status Summary Cards */}
       <div className="grid grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
@@ -500,6 +632,111 @@ function Requests() {
             </div>
           ))}
         </div>
+      )}
+        </>
+      )}
+
+      {/* Shift Swap Requests Tab */}
+      {activeTab === 'swap' && (
+        <>
+          {swapRequests.length === 0 ? (
+            <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-100">
+              <svg className="w-20 h-20 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              <p className="text-gray-600 text-lg font-medium mb-2">No shift swap requests pending approval</p>
+              <p className="text-gray-500 text-sm">Shift swaps approved by both doctors will appear here for final review.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {swapRequests.map((swap) => (
+                <div key={swap.id} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-start justify-between gap-6">
+                    {/* Swap Details */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Pending Admin Approval
+                        </span>
+                        <span className="text-sm text-gray-500">Requested on {formatDate(swap.requestedDate)}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 mb-4">
+                        {/* Requester */}
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Requester</p>
+                          <p className="text-base font-semibold text-gray-800">{swap.requesterDoctor.name}</p>
+                          <p className="text-sm text-gray-500 mb-3">{swap.requesterDoctor.specialization}</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Gives up:</p>
+                          <p className="text-sm font-semibold text-gray-700">{swap.requesterShift.date} — {swap.requesterShift.type}</p>
+                          <p className="text-sm text-gray-600">{formatTime(swap.requesterShift.startTime)} – {formatTime(swap.requesterShift.endTime)}</p>
+                          <p className="text-xs text-gray-500 mt-1">{swap.requesterShift.department}</p>
+                        </div>
+
+                        {/* Target */}
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Accepting Doctor</p>
+                          <p className="text-base font-semibold text-gray-800">{swap.targetDoctor.name}</p>
+                          <p className="text-sm text-gray-500 mb-3">{swap.targetDoctor.specialization}</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Gives up:</p>
+                          <p className="text-sm font-semibold text-gray-700">{swap.targetShift.date} — {swap.targetShift.type}</p>
+                          <p className="text-sm text-gray-600">{formatTime(swap.targetShift.startTime)} – {formatTime(swap.targetShift.endTime)}</p>
+                          <p className="text-xs text-gray-500 mt-1">{swap.targetShift.department}</p>
+                        </div>
+                      </div>
+
+                      {swap.notes && (
+                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                          <span className="text-sm font-semibold text-blue-700">Note: </span>
+                          <span className="text-sm text-blue-600">{swap.notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-3 min-w-[140px]">
+                      <button
+                        onClick={() => handleApproveSwap(swap.id)}
+                        disabled={processingId === swap.id}
+                        className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        {processingId === swap.id ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Approve
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleRejectSwap(swap.id)}
+                        disabled={processingId === swap.id}
+                        className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        {processingId === swap.id ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Reject
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

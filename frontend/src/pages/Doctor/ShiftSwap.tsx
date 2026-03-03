@@ -37,6 +37,31 @@ interface SwapRequest {
   }
 }
 
+interface IncomingSwapRequest {
+  id: string
+  status: string
+  requestedDate: string
+  notes?: string | null
+  requesterDoctor: {
+    name: string
+    specialization: string
+  }
+  yourShift: {
+    date: string
+    type: string
+    startTime: string
+    endTime: string
+    department: string
+  }
+  requestedShift: {
+    date: string
+    type: string
+    startTime: string
+    endTime: string
+    department: string
+  }
+}
+
 interface Colleague {
   id: string
   name: string
@@ -71,6 +96,7 @@ function ShiftSwap() {
   const [loadingColleagueShifts, setLoadingColleagueShifts] = useState(false)
   const [swapNotes, setSwapNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [incomingRequests, setIncomingRequests] = useState<IncomingSwapRequest[]>([])
 
   // Get doctor ID from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -250,6 +276,88 @@ function ShiftSwap() {
     }
   }
 
+  const handleAcceptSwap = async (requestId: string) => {
+    const result = await Swal.fire({
+      title: 'Accept Swap Request?',
+      text: 'Are you sure you want to accept this shift swap? It will be forwarded to admin for final approval.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Accept',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/coworker-response`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ coworkerDoctorId: doctorId, action: 'accept' })
+        })
+        const data = await response.json()
+        if (data.success) {
+          setIncomingRequests(incomingRequests.filter(r => r.id !== requestId))
+          Swal.fire({
+            icon: 'success',
+            title: 'Accepted!',
+            text: 'Swap request accepted and forwarded to admin for approval.',
+            confirmButtonColor: '#10b981',
+            timer: 2500,
+            showConfirmButton: false
+          })
+        } else {
+          throw new Error(data.error || 'Failed to accept swap request')
+        }
+      } catch (err: any) {
+        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Failed to accept swap request', confirmButtonColor: '#3b82f6' })
+      }
+    }
+  }
+
+  const handleDeclineSwap = async (requestId: string) => {
+    const result = await Swal.fire({
+      title: 'Decline Swap Request?',
+      input: 'textarea',
+      inputLabel: 'Reason (Optional)',
+      inputPlaceholder: 'Let your colleague know why you declined...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Decline',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/coworker-response`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ coworkerDoctorId: doctorId, action: 'decline', note: result.value || null })
+        })
+        const data = await response.json()
+        if (data.success) {
+          setIncomingRequests(incomingRequests.filter(r => r.id !== requestId))
+          Swal.fire({
+            icon: 'info',
+            title: 'Declined',
+            text: 'You have declined the swap request.',
+            confirmButtonColor: '#3b82f6',
+            timer: 2000,
+            showConfirmButton: false
+          })
+        } else {
+          throw new Error(data.error || 'Failed to decline swap request')
+        }
+      } catch (err: any) {
+        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Failed to decline swap request', confirmButtonColor: '#3b82f6' })
+      }
+    }
+  }
+
   const handleCancelRequest = async (requestId: string) => {
     try {
       const response = await fetch(`http://localhost:3001/api/shift-swap/${requestId}`, {
@@ -318,6 +426,83 @@ function ShiftSwap() {
                 New Swap Request
               </button>
             </div>
+
+            {/* Incoming Swap Requests (target doctor action required) */}
+            {incomingRequests.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <h3 className="text-lg font-semibold text-gray-700">Incoming Swap Requests</h3>
+                  <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full">
+                    {incomingRequests.length}
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  {incomingRequests.map((request) => (
+                    <div key={request.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-5">
+                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            {request.requesterDoctor.name} wants to swap shifts with you
+                          </h3>
+                          <p className="text-sm text-gray-500">{request.requesterDoctor.specialization}</p>
+                        </div>
+                        <span className="ml-auto px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                          Action Required
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 mb-5">
+                        <div className="bg-white rounded-lg p-4 border border-blue-100">
+                          <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Their Shift (they give up)</h4>
+                          <p className="text-base font-semibold text-gray-800 mb-1">{request.requestedShift.date} — {request.requestedShift.type}</p>
+                          <p className="text-sm text-gray-600">{formatTime(request.requestedShift.startTime)} – {formatTime(request.requestedShift.endTime)}</p>
+                          <p className="text-sm text-gray-500 mt-1">{request.requestedShift.department}</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-orange-100">
+                          <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-2">Your Shift (you give up)</h4>
+                          <p className="text-base font-semibold text-gray-800 mb-1">{request.yourShift.date} — {request.yourShift.type}</p>
+                          <p className="text-sm text-gray-600">{formatTime(request.yourShift.startTime)} – {formatTime(request.yourShift.endTime)}</p>
+                          <p className="text-sm text-gray-500 mt-1">{request.yourShift.department}</p>
+                        </div>
+                      </div>
+
+                      {request.notes && (
+                        <div className="mb-4 bg-white border border-blue-100 rounded-lg p-3">
+                          <p className="text-xs font-medium text-gray-500 mb-1">Reason from requester:</p>
+                          <p className="text-sm text-gray-700">{request.notes}</p>
+                        </div>
+                      )}
+
+                      <p className="text-sm text-gray-500 mb-4">Requested on {formatDate(request.requestedDate)}</p>
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleAcceptSwap(request.id)}
+                          className="flex items-center gap-2 px-6 py-2.5 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition-colors shadow-sm"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleDeclineSwap(request.id)}
+                          className="flex items-center gap-2 px-6 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition-colors shadow-sm"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Pending Requests Section */}
             <div className="mb-8">
