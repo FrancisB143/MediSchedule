@@ -34,7 +34,7 @@ function LeaveRequest() {
   })
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestData[]>([])
   const [loading, setLoading] = useState(true)
-  
+    
   // Form states
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')

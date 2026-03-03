@@ -279,10 +279,10 @@ router.get('/doctor/:doctorId', async (req, res) => {
 // Create a new shift swap request
 router.post('/', async (req, res) => {
   try {
-    const { requesterDoctorId, requesterShiftId, targetDoctorId } = req.body;
+    const { requesterDoctorId, requesterShiftId, targetDoctorId, targetShiftId, notes } = req.body;
 
-    if (!requesterDoctorId || !requesterShiftId || !targetDoctorId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!requesterDoctorId || !requesterShiftId || !targetDoctorId || !targetShiftId) {
+      return res.status(400).json({ error: 'Missing required fields: requesterDoctorId, requesterShiftId, targetDoctorId, targetShiftId are all required.' });
     }
 
     // Validate requester shift exists and is assigned to requester doctor
@@ -308,16 +308,19 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Shift swap can only be requested for future shifts.' });
     }
 
-    // Coworker must have a shift on the same date
+    // Validate the specific target shift chosen by the requester
     const { data: targetShift, error: targetShiftError } = await supabase
       .from('shifts')
       .select('id, doctor_id, shift_date, shift_type, start_time, end_time, department_id')
-      .eq('doctor_id', targetDoctorId)
-      .eq('shift_date', requesterShift.shift_date)
+      .eq('id', targetShiftId)
       .single();
 
     if (targetShiftError || !targetShift) {
-      return res.status(400).json({ error: 'Selected coworker does not have a shift on that date.' });
+      return res.status(404).json({ error: 'Selected target shift does not exist.' });
+    }
+
+    if (targetShift.doctor_id !== targetDoctorId) {
+      return res.status(403).json({ error: 'Selected shift does not belong to the target doctor.' });
     }
 
     // Prevent duplicate active requests for this requester shift
@@ -403,7 +406,8 @@ router.post('/', async (req, res) => {
         target_doctor_id: targetDoctorId,
         target_shift_id: targetShift.id,
         status: REQUEST_STATUS.PENDING_COWORKER,
-        requested_date: new Date().toISOString().split('T')[0]
+        requested_date: new Date().toISOString().split('T')[0],
+        notes: notes || null
       })
       .select()
       .single();

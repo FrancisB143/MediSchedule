@@ -16,6 +16,7 @@ interface SwapRequest {
   id: string
   status: string
   requestedDate: string
+  notes?: string | null
   targetDoctor: {
     name: string
     specialization: string
@@ -45,6 +46,16 @@ interface Colleague {
   reason?: string | null
 }
 
+interface ColleagueShift {
+  id: string
+  date: string
+  shiftType: string
+  startTime: string
+  endTime: string
+  department: string
+  status: string
+}
+
 function ShiftSwap() {
   const [showModal, setShowModal] = useState(false)
   const [selectedShift, setSelectedShift] = useState<string | null>(null)
@@ -55,6 +66,10 @@ function ShiftSwap() {
   const [pendingRequests, setPendingRequests] = useState<SwapRequest[]>([])
   const [colleagues, setColleagues] = useState<Colleague[]>([])
   const [loadingColleagues, setLoadingColleagues] = useState(false)
+  const [colleagueShifts, setColleagueShifts] = useState<ColleagueShift[]>([])
+  const [selectedColleagueShift, setSelectedColleagueShift] = useState<string | null>(null)
+  const [loadingColleagueShifts, setLoadingColleagueShifts] = useState(false)
+  const [swapNotes, setSwapNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   // Get doctor ID from localStorage
@@ -108,6 +123,34 @@ function ShiftSwap() {
     }
   }, [doctorId])
 
+  // Fetch colleague's shifts when a colleague is selected
+  useEffect(() => {
+    const fetchColleagueShifts = async () => {
+      if (!selectedColleague) {
+        setColleagueShifts([])
+        setSelectedColleagueShift(null)
+        return
+      }
+      try {
+        setLoadingColleagueShifts(true)
+        setSelectedColleagueShift(null)
+        const response = await fetch(`http://localhost:3001/api/shifts/doctor/${selectedColleague}/upcoming`)
+        const data = await response.json()
+        if (data.success) {
+          setColleagueShifts(data.shifts)
+        } else {
+          setColleagueShifts([])
+        }
+        setLoadingColleagueShifts(false)
+      } catch (err) {
+        console.error('Error fetching colleague shifts:', err)
+        setColleagueShifts([])
+        setLoadingColleagueShifts(false)
+      }
+    }
+    fetchColleagueShifts()
+  }, [selectedColleague])
+
   // Fetch available colleagues when a shift is selected
   useEffect(() => {
     const fetchColleagues = async () => {
@@ -153,7 +196,7 @@ function ShiftSwap() {
   }
 
   const handleSendRequest = async () => {
-    if (selectedShift && selectedColleague) {
+    if (selectedShift && selectedColleague && selectedColleagueShift) {
       try {
         const response = await fetch('http://localhost:3001/api/shift-swap', {
           method: 'POST',
@@ -163,7 +206,9 @@ function ShiftSwap() {
           body: JSON.stringify({
             requesterDoctorId: doctorId,
             requesterShiftId: selectedShift,
-            targetDoctorId: selectedColleague
+            targetDoctorId: selectedColleague,
+            targetShiftId: selectedColleagueShift,
+            notes: swapNotes.trim() || null
           })
         })
 
@@ -176,6 +221,9 @@ function ShiftSwap() {
         setShowModal(false)
         setSelectedShift(null)
         setSelectedColleague(null)
+        setSelectedColleagueShift(null)
+        setColleagueShifts([])
+        setSwapNotes('')
         setSearchQuery('')
 
         // Refresh pending requests list
@@ -329,6 +377,14 @@ function ShiftSwap() {
 
                       {/* Request Date */}
                       <p className="text-sm text-gray-500">Requested on {formatDate(request.requestedDate)}</p>
+
+                      {/* Notes */}
+                      {request.notes && (
+                        <div className="mt-3 bg-white border border-yellow-200 rounded-lg p-3">
+                          <p className="text-xs font-medium text-gray-500 mb-1">Reason:</p>
+                          <p className="text-sm text-gray-700">{request.notes}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -445,8 +501,31 @@ function ShiftSwap() {
                 </div>
 
                 {/* Section 2: Select Colleague */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">2. Select Colleague</h3>
+                <div className="mb-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-1">2. Find a Qualified Coworker</h3>
+                      <p className="text-sm text-gray-600">Select a colleague who is available and qualified for your shift</p>
+                    </div>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">We automatically check:</p>
+                        <ul className="space-y-1 text-blue-700">
+                          <li>✓ Same department/specialization qualification</li>
+                          <li>✓ No schedule conflicts on the swap date</li>
+                          <li>✓ Weekly overtime limits not exceeded</li>
+                          <li>✓ Has a shift on the selected date</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                   
                   {!selectedShift ? (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
@@ -464,7 +543,12 @@ function ShiftSwap() {
                       <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                       </svg>
-                      <p className="text-gray-600 text-sm">No colleagues have shifts on this date</p>
+                      <p className="text-gray-700 font-medium mb-1">No Available Colleagues Found</p>
+                      <p className="text-gray-600 text-sm">
+                        {searchQuery 
+                          ? 'Try adjusting your search or select a different shift' 
+                          : 'No qualified colleagues have shifts on this date'}
+                      </p>
                     </div>
                   ) : (
                     <>
@@ -475,7 +559,7 @@ function ShiftSwap() {
                         </svg>
                         <input
                           type="text"
-                          placeholder="Search by name or department..."
+                          placeholder="Search by name or specialization..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -483,44 +567,62 @@ function ShiftSwap() {
                       </div>
 
                       {/* Colleagues List */}
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                      <div className="space-y-3 max-h-48 overflow-y-auto">
                         {filteredColleagues.map((colleague) => (
                           <div
                             key={colleague.id}
-                            onClick={() => colleague.available && setSelectedColleague(colleague.id)}
+                            onClick={() => {
+                              if (colleague.available) {
+                                setSelectedColleague(colleague.id)
+                                setSelectedColleagueShift(null)
+                              }
+                            }}
                             className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all ${
                               selectedColleague === colleague.id
                                 ? 'border-blue-500 bg-blue-50'
                                 : colleague.available
                                 ? 'border-gray-200 hover:border-gray-300 bg-white'
-                                : 'border-gray-300 bg-gray-200 cursor-not-allowed'
+                                : 'border-gray-300 bg-gray-100 cursor-not-allowed opacity-75'
                             }`}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-1">
                               {/* Avatar */}
                               <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold ${
-                                colleague.available ? 'bg-blue-500' : 'bg-gray-400'
+                                colleague.available ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gray-400'
                               }`}>
                                 {colleague.initials}
                               </div>
                               {/* Info */}
-                              <div>
-                                <h4 className={`font-semibold ${
-                                  colleague.available ? 'text-gray-800' : 'text-gray-500'
-                                }`}>{colleague.name}</h4>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className={`font-semibold ${
+                                    colleague.available ? 'text-gray-800' : 'text-gray-500'
+                                  }`}>{colleague.name}</h4>
+                                  {colleague.available && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      Available
+                                    </span>
+                                  )}
+                                </div>
                                 <p className={`text-sm ${
                                   colleague.available ? 'text-gray-600' : 'text-gray-400'
                                 }`}>{colleague.specialization}</p>
                               </div>
                             </div>
-                            {/* Availability Badge */}
+                            {/* Unavailability Info */}
                             {!colleague.available && (
-                              <div className="text-right max-w-[220px]">
-                                <span className="px-3 py-1 bg-gray-400 text-white text-xs font-medium rounded-full">
+                              <div className="text-right max-w-[240px]">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
                                   Unavailable
                                 </span>
                                 {colleague.reason && (
-                                  <p className="text-xs text-gray-500 mt-2">{colleague.reason}</p>
+                                  <p className="text-xs text-gray-500 mt-2 text-left">{colleague.reason}</p>
                                 )}
                               </div>
                             )}
@@ -530,6 +632,65 @@ function ShiftSwap() {
                     </>
                   )}
                 </div>
+
+                {/* Section 3: Select Colleague's Shift */}
+                {selectedColleague && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-1">3. Pick Their Shift to Take</h3>
+                    <p className="text-sm text-gray-600 mb-4">Select which shift of theirs you want in exchange</p>
+
+                    {loadingColleagueShifts ? (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mb-2"></div>
+                        <p className="text-sm text-gray-500">Loading their shifts...</p>
+                      </div>
+                    ) : colleagueShifts.length === 0 ? (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                        <p className="text-gray-600 font-medium">No upcoming shifts found</p>
+                        <p className="text-gray-500 text-sm mt-1">This colleague has no upcoming shifts to swap</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-48 overflow-y-auto">
+                        {colleagueShifts.map((shift) => {
+                          const date = new Date(shift.date)
+                          const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
+                          return (
+                            <div
+                              key={shift.id}
+                              onClick={() => setSelectedColleagueShift(shift.id)}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedColleagueShift === shift.id
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                              }`}
+                            >
+                              <h4 className="text-base font-semibold text-gray-800">{dayName}, {shift.date}</h4>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {shift.shiftType} · {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">{shift.department}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Section 4: Reason / Notes */}
+                {selectedColleague && selectedColleagueShift && (
+                  <div className="mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-1">4. Add a Reason <span className="text-sm font-normal text-gray-400">(optional)</span></h3>
+                    <p className="text-sm text-gray-600 mb-4">Let your colleague know why you want to swap</p>
+                    <textarea
+                      value={swapNotes}
+                      onChange={(e) => setSwapNotes(e.target.value)}
+                      placeholder="e.g. Family appointment on that day..."
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -539,6 +700,9 @@ function ShiftSwap() {
                     setShowModal(false)
                     setSelectedShift(null)
                     setSelectedColleague(null)
+                    setSelectedColleagueShift(null)
+                    setColleagueShifts([])
+                    setSwapNotes('')
                     setSearchQuery('')
                   }}
                   className="px-6 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
@@ -547,9 +711,9 @@ function ShiftSwap() {
                 </button>
                 <button
                   onClick={handleSendRequest}
-                  disabled={!selectedShift || !selectedColleague}
+                  disabled={!selectedShift || !selectedColleague || !selectedColleagueShift}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
-                    selectedShift && selectedColleague
+                    selectedShift && selectedColleague && selectedColleagueShift
                       ? 'bg-blue-500 text-white hover:bg-blue-600'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
