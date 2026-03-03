@@ -143,6 +143,58 @@ router.get('/doctor/:doctorId', async (req, res) => {
   }
 });
 
+// Get all shifts for a specific month (for calendar view)
+router.get('/doctor/:doctorId/calendar', async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const { year, month } = req.query;
+
+    const targetYear = parseInt(year) || new Date().getFullYear();
+    const targetMonth = parseInt(month) || new Date().getMonth() + 1;
+
+    const firstDay = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0];
+
+    const { data: shifts, error } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        departments (
+          name,
+          building,
+          floor
+        )
+      `)
+      .eq('doctor_id', doctorId)
+      .gte('shift_date', firstDay)
+      .lte('shift_date', lastDay)
+      .order('shift_date', { ascending: true });
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to fetch calendar shifts', details: error });
+    }
+
+    return res.json({
+      success: true,
+      shifts: shifts.map(shift => ({
+        id: shift.id,
+        date: shift.shift_date,
+        shiftType: shift.shift_type,
+        startTime: shift.start_time,
+        endTime: shift.end_time,
+        department: shift.departments?.name || 'N/A',
+        building: shift.building || shift.departments?.building || 'N/A',
+        floor: shift.floor || shift.departments?.floor || 'N/A',
+        status: shift.status,
+        colleagues: shift.colleagues_count || 0
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching calendar shifts:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get upcoming shifts (next 2 weeks)
 router.get('/doctor/:doctorId/upcoming', async (req, res) => {
   try {

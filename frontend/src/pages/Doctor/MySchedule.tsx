@@ -31,35 +31,58 @@ function MySchedule() {
   })
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(true)
+  const [calendarLoading, setCalendarLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [showDateModal, setShowDateModal] = useState(false)
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false)
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const doctorId = user.id
+
+  // Fetch weekly stats once on load
   useEffect(() => {
-    fetchScheduleData()
+    fetchWeeklyStats()
   }, [])
 
-  const fetchScheduleData = async () => {
+  // Fetch calendar shifts when month changes
+  useEffect(() => {
+    if (doctorId) {
+      fetchCalendarShifts()
+    }
+  }, [currentDate, doctorId])
+
+  const fetchWeeklyStats = async () => {
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
-      const doctorId = user.id
-
-      if (!doctorId) {
-        console.error('No doctor ID found')
-        return
-      }
-
+      if (!doctorId) return
       const response = await fetch(`http://localhost:3001/api/shifts/doctor/${doctorId}`)
       const data = await response.json()
-
       if (data.success) {
         setStats(data.stats)
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCalendarShifts = async () => {
+    try {
+      if (!doctorId) return
+      setCalendarLoading(true)
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth() + 1
+      const response = await fetch(
+        `http://localhost:3001/api/shifts/doctor/${doctorId}/calendar?year=${year}&month=${month}`
+      )
+      const data = await response.json()
+      if (data.success) {
         setShifts(data.shifts)
       }
     } catch (error) {
-      console.error('Error fetching schedule:', error)
+      console.error('Error fetching calendar shifts:', error)
     } finally {
-      setLoading(false)
+      setCalendarLoading(false)
     }
   }
 
@@ -264,7 +287,13 @@ function MySchedule() {
               </div>
 
                 {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-2">
+                <div className="relative">
+                  {calendarLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-lg">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+                <div className={`grid grid-cols-7 gap-2 ${calendarLoading ? 'opacity-40' : ''}`}>
                   {/* Day Headers */}
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                     <div key={day} className="text-center text-sm font-semibold text-gray-600 py-2">
@@ -324,6 +353,7 @@ function MySchedule() {
                     )
                   })}
                 </div>
+                </div>{/* end grid wrapper */}
 
                 {/* Legend */}
                 <div className="mt-6 flex items-center gap-6 text-sm">
