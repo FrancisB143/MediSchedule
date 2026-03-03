@@ -127,7 +127,7 @@ function Sidebar({ onLogout }: SidebarProps) {
   }
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed">
+    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed z-50">
       {notification && (
         <div className={`p-4 flex items-start gap-3 border-b ${
           notification.type === 'success' 
@@ -305,7 +305,7 @@ function Sidebar({ onLogout }: SidebarProps) {
       </div>
 
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-800">Edit Profile</h2>
@@ -397,7 +397,7 @@ function Sidebar({ onLogout }: SidebarProps) {
       )}
 
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
             <div className="bg-white border-b border-gray-200 p-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-800">Change Password</h2>

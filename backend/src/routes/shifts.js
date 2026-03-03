@@ -260,6 +260,11 @@ router.post('/publish', async (req, res) => {
     
     console.log('Number of assignment keys:', Object.keys(assignments).length);
 
+    // Pre-fetch all departments for name → id lookup
+    const { data: allDepartments } = await supabase.from('departments').select('id, name');
+    const deptNameToId = {};
+    (allDepartments || []).forEach(d => { deptNameToId[d.name.toLowerCase()] = d.id; });
+
     // Convert assignments object to array of shift entries
     const shiftsToCreate = [];
     const seenShifts = new Set(); // Track unique shifts to prevent duplicates
@@ -294,14 +299,18 @@ router.post('/publish', async (req, res) => {
         }
         
         seenShifts.add(shiftKey);
-        
+
+        const departmentId = assignment.department
+          ? deptNameToId[assignment.department.toLowerCase()] || null
+          : null;
+
         shiftsToCreate.push({
           doctor_id: assignment.staffId,
           shift_date: shiftDate,
           shift_type: shiftType,
           start_time: getShiftStartTime(shiftType),
           end_time: getShiftEndTime(shiftType),
-          department_id: null,
+          department_id: departmentId,
           status: 'Confirmed'
         });
       });

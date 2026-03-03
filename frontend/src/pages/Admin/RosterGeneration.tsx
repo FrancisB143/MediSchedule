@@ -17,6 +17,7 @@ interface Staff {
 interface Assignment {
   staffId: string
   staffName: string
+  department?: string
   isPublished?: boolean // Track if this assignment is from database
 }
 
@@ -407,7 +408,8 @@ function RosterGeneration() {
       
       const newAssignment = {
         staffId: draggedStaff.id,
-        staffName: draggedStaff.name
+        staffName: draggedStaff.name,
+        department: draggedStaff.department
       }
 
       setAssignments(prevAssignments => {
