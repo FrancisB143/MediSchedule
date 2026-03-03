@@ -1,12 +1,18 @@
 // Brevo Email Service - Send emails via Brevo API
-// Load credentials from environment variables
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+// Read credentials lazily (inside functions) so dotenv.config() has already run
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
-const SENDER_EMAIL = process.env.SENDER_EMAIL || 'noreply@medischedule.com';
 const SENDER_NAME = 'MediSchedule';
 
 // Function to send temporary password email via Brevo
 export const sendTemporaryPasswordEmail = async (email, name, temporaryPassword) => {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const SENDER_EMAIL = process.env.SENDER_EMAIL || 'noreply@medischedule.com';
+
+  if (!BREVO_API_KEY) {
+    console.error('BREVO_API_KEY is not configured.');
+    return { success: false, error: 'Email service not configured' };
+  }
+
   try {
     const mailOptions = {
       sender: {
@@ -82,6 +88,9 @@ export const sendTemporaryPasswordEmail = async (email, name, temporaryPassword)
 };
 
 export const sendSwapStatusNotificationEmail = async ({ email, name, subject, heading, message, details = [] }) => {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const SENDER_EMAIL = process.env.SENDER_EMAIL || 'noreply@medischedule.com';
+
   try {
     if (!BREVO_API_KEY) {
       console.warn('BREVO_API_KEY is not configured. Swap notification email skipped.');
