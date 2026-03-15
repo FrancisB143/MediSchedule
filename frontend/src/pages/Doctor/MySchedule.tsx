@@ -31,7 +31,7 @@ function MySchedule() {
     departments: []
   })
   const [shifts, setShifts] = useState<Shift[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [calendarLoading, setCalendarLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState<number | null>(null)
   const [showDateModal, setShowDateModal] = useState(false)
@@ -40,11 +40,6 @@ function MySchedule() {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const doctorId = user.id
 
-  // Fetch weekly stats once on load
-  useEffect(() => {
-    fetchWeeklyStats()
-  }, [])
-
   // Fetch calendar shifts when month changes
   useEffect(() => {
     if (doctorId) {
@@ -52,24 +47,43 @@ function MySchedule() {
     }
   }, [currentDate, doctorId])
 
-  const fetchWeeklyStats = async () => {
-    try {
-      if (!doctorId) return
-      const response = await fetch(`${API_BASE_URL}/api/shifts/doctor/${doctorId}`)
-      const data = await response.json()
-      if (data.success) {
-        setStats(data.stats)
+  useEffect(() => {
+    const departmentsSet = new Set<string>()
+    let totalHours = 0
+    let colleagues = 0
+
+    shifts.forEach((shift) => {
+      const [startHours, startMinutes] = shift.startTime.split(':').map(Number)
+      const [endHours, endMinutes] = shift.endTime.split(':').map(Number)
+
+      const startTotalMinutes = (startHours * 60) + startMinutes
+      let endTotalMinutes = (endHours * 60) + endMinutes
+
+      if (endTotalMinutes < startTotalMinutes) {
+        endTotalMinutes += 24 * 60
       }
-    } catch (error) {
-      console.error('Error fetching stats:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+
+      totalHours += (endTotalMinutes - startTotalMinutes) / 60
+
+      if (shift.department && shift.department !== 'N/A') {
+        departmentsSet.add(shift.department)
+      }
+
+      colleagues += shift.colleagues || 0
+    })
+
+    setStats({
+      scheduledShifts: shifts.length,
+      totalHours: Math.round(totalHours),
+      colleagues,
+      departments: Array.from(departmentsSet)
+    })
+  }, [shifts])
 
   const fetchCalendarShifts = async () => {
     try {
       if (!doctorId) return
+      setLoading(true)
       setCalendarLoading(true)
       const year = currentDate.getFullYear()
       const month = currentDate.getMonth() + 1
@@ -83,6 +97,7 @@ function MySchedule() {
     } catch (error) {
       console.error('Error fetching calendar shifts:', error)
     } finally {
+      setLoading(false)
       setCalendarLoading(false)
     }
   }
@@ -210,7 +225,7 @@ function MySchedule() {
                 <span className="text-sm font-medium">This Week</span>
               </div>
               <div className="text-4xl font-bold mb-1">{stats.scheduledShifts}</div>
-              <div className="text-sm text-blue-100">Scheduled Shifts</div>
+              <div className="text-sm text-blue-100">Scheduled Shifts This Month</div>
             </div>
 
             {/* Total Hours Card */}
@@ -222,7 +237,7 @@ function MySchedule() {
                 <span className="text-sm font-medium text-gray-600">Total Hours</span>
               </div>
               <div className="text-4xl font-bold text-gray-800 mb-1">{stats.totalHours}</div>
-              <div className="text-sm text-gray-500">This Week</div>
+              <div className="text-sm text-gray-500">This Month</div>
             </div>
 
             {/* Colleagues Card */}
