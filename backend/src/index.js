@@ -13,6 +13,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 const frontendUrl = process.env.FRONTEND_URL?.trim();
+const frontendVercelPattern = /^https:\/\/medischedule-frontend.*\.vercel\.app$/;
 
 // Middleware
 const allowedOrigins = frontendUrl
@@ -22,7 +23,7 @@ const allowedOrigins = frontendUrl
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g. mobile apps, curl)
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || frontendVercelPattern.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
