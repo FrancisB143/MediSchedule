@@ -1,9 +1,10 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase.js';
 
 const router = express.Router();
+const JWT_SECRET = process.env.SUPABASE_JWT_SECRET?.trim() || process.env.JWT_SECRET?.trim();
 
 // Login endpoint
 router.post('/login', async (req, res) => {
@@ -33,7 +34,7 @@ router.post('/login', async (req, res) => {
         // Generate JWT token
         const token = jwt.sign(
           { id: doctor.id, email: doctor.email, type: 'doctor' },
-          process.env.SUPABASE_JWT_SECRET,
+          JWT_SECRET,
           { expiresIn: '24h' }
         );
 
@@ -73,7 +74,7 @@ router.post('/login', async (req, res) => {
         // Generate JWT token
         const token = jwt.sign(
           { id: admin.id, email: admin.email, type: 'admin' },
-          process.env.SUPABASE_JWT_SECRET,
+          JWT_SECRET,
           { expiresIn: '24h' }
         );
 
@@ -111,7 +112,7 @@ router.get('/verify', async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     
     return res.json({
       success: true,
@@ -132,7 +133,7 @@ router.put('/update-profile', async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const { firstName, lastName, email, phone, specialization, role } = req.body;
 
     // Determine if user is doctor or admin
@@ -203,7 +204,7 @@ router.put('/change-password', async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {

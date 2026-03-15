@@ -12,10 +12,11 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const frontendUrl = process.env.FRONTEND_URL?.trim();
 
 // Middleware
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, 'http://localhost:5173']
+const allowedOrigins = frontendUrl
+  ? [frontendUrl, 'http://localhost:5173']
   : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(cors({
