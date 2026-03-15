@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import API_BASE_URL from './config/api'
 import Login from './pages/Login'
 import DoctorLayout from './pages/Doctor/DoctorLayout.tsx'
 import MySchedule from './pages/Doctor/MySchedule.tsx'
@@ -24,7 +25,7 @@ function App() {
     
     if (token && savedUserType) {
       // Verify token is still valid
-      fetch('http://localhost:3001/api/auth/verify', {
+      fetch(`${API_BASE_URL}/api/auth/verify`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../config/api'
 
 interface HeaderProps {
   title: string
@@ -35,7 +36,7 @@ function Header({ title, subtitle }: HeaderProps) {
   const fetchIncoming = async () => {
     if (!doctorId) return
     try {
-      const res = await fetch(`http://localhost:3001/api/shift-swap/doctor/${doctorId}`)
+      const res = await fetch(`${API_BASE_URL}/api/shift-swap/doctor/${doctorId}`)
       const data = await res.json()
       if (data.success) setIncoming(data.incomingRequests || [])
     } catch { /* silent */ }
@@ -73,7 +74,7 @@ function Header({ title, subtitle }: HeaderProps) {
     if (!result.isConfirmed) return
     try {
       setProcessingId(requestId)
-      const res = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/coworker-response`, {
+      const res = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}/coworker-response`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coworkerDoctorId: doctorId, action: 'accept' })
@@ -105,7 +106,7 @@ function Header({ title, subtitle }: HeaderProps) {
     if (!result.isConfirmed) return
     try {
       setProcessingId(requestId)
-      const res = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/coworker-response`, {
+      const res = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}/coworker-response`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coworkerDoctorId: doctorId, action: 'decline', note: result.value || null })

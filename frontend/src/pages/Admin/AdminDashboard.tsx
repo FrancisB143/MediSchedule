@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import API_BASE_URL from '../../config/api'
 
 interface DashboardStats {
   totalDoctors: number
@@ -59,9 +60,9 @@ function AdminDashboard() {
     try {
       setLoading(true)
       const [statsResponse, deptResponse, weeklyResponse] = await Promise.all([
-        fetch('http://localhost:3001/api/admin/stats'),
-        fetch('http://localhost:3001/api/admin/staff-by-department'),
-        fetch('http://localhost:3001/api/admin/weekly-coverage')
+        fetch(`${API_BASE_URL}/api/admin/stats`),
+        fetch(`${API_BASE_URL}/api/admin/staff-by-department`),
+        fetch(`${API_BASE_URL}/api/admin/weekly-coverage`)
       ])
       
       const statsData = await statsResponse.json()

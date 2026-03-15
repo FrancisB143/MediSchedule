@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../../config/api'
 
 interface Staff {
   id: string
@@ -92,7 +93,7 @@ function RosterGeneration() {
   const fetchStaffMembers = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:3001/api/staff')
+      const response = await fetch(`${API_BASE_URL}/api/staff`)
       const data = await response.json()
 
       if (data.success) {
@@ -113,7 +114,7 @@ function RosterGeneration() {
       const year = currentDate.getFullYear()
       const month = currentDate.getMonth() + 1
       
-      const response = await fetch(`http://localhost:3001/api/shifts/published/${year}/${month}`)
+      const response = await fetch(`${API_BASE_URL}/api/shifts/published/${year}/${month}`)
       const data = await response.json()
 
       if (data.success && data.shifts) {
@@ -206,7 +207,7 @@ function RosterGeneration() {
       });
       
       try {
-        const response = await fetch('http://localhost:3001/api/shifts/publish', {
+        const response = await fetch(`${API_BASE_URL}/api/shifts/publish`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -225,7 +226,7 @@ function RosterGeneration() {
           // Fetch the published shifts to reload them and mark as published in the UI
           try {
             const publishedResponse = await fetch(
-              `http://localhost:3001/api/shifts/published/${currentDate.getFullYear()}/${currentDate.getMonth() + 1}`
+              `${API_BASE_URL}/api/shifts/published/${currentDate.getFullYear()}/${currentDate.getMonth() + 1}`
             );
             const publishedData = await publishedResponse.json();
 

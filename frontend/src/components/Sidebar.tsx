@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../config/api'
 
 interface SidebarProps {
   onLogout: () => void
@@ -61,7 +62,7 @@ function Sidebar({ onLogout }: SidebarProps) {
 
   const handleUpdateProfile = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/update-profile', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ function Sidebar({ onLogout }: SidebarProps) {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/change-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ function Sidebar({ onLogout }: SidebarProps) {
   }
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed z-50">
+    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed">
       {notification && (
         <div className={`p-4 flex items-start gap-3 border-b ${
           notification.type === 'success' 
@@ -195,7 +196,7 @@ function Sidebar({ onLogout }: SidebarProps) {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
-          <span className="font-medium flex-1">Shift Swap</span>
+          <span className="font-medium">Shift Swap</span>
         </NavLink>
 
         <NavLink
@@ -305,7 +306,7 @@ function Sidebar({ onLogout }: SidebarProps) {
       </div>
 
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-800">Edit Profile</h2>
@@ -397,7 +398,7 @@ function Sidebar({ onLogout }: SidebarProps) {
       )}
 
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
             <div className="bg-white border-b border-gray-200 p-6 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-800">Change Password</h2>

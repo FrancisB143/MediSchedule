@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
 import Header from '../../components/Header'
+import API_BASE_URL from '../../config/api'
 
 interface Shift {
   id: string
@@ -121,7 +122,7 @@ function ShiftSwap() {
         setLoading(true)
 
         // Fetch pending swap requests
-        const requestsResponse = await fetch(`http://localhost:3001/api/shift-swap/doctor/${doctorId}`)
+        const requestsResponse = await fetch(`${API_BASE_URL}/api/shift-swap/doctor/${doctorId}`)
         const requestsData = await requestsResponse.json()
         
         if (requestsData.success) {
@@ -129,7 +130,7 @@ function ShiftSwap() {
         }
 
         // Fetch upcoming shifts
-        const shiftsResponse = await fetch(`http://localhost:3001/api/shifts/doctor/${doctorId}/upcoming`)
+        const shiftsResponse = await fetch(`${API_BASE_URL}/api/shifts/doctor/${doctorId}/upcoming`)
         const shiftsData = await shiftsResponse.json()
         
         if (shiftsData.success) {
@@ -160,7 +161,7 @@ function ShiftSwap() {
       try {
         setLoadingColleagueShifts(true)
         setSelectedColleagueShift(null)
-        const response = await fetch(`http://localhost:3001/api/shifts/doctor/${selectedColleague}/upcoming`)
+        const response = await fetch(`${API_BASE_URL}/api/shifts/doctor/${selectedColleague}/upcoming`)
         const data = await response.json()
         if (data.success) {
           setColleagueShifts(data.shifts)
@@ -188,7 +189,7 @@ function ShiftSwap() {
       try {
         setLoadingColleagues(true)
         setSelectedColleague(null) // Reset selected colleague when shift changes
-        const response = await fetch(`http://localhost:3001/api/shift-swap/available-colleagues/${selectedShift}/${doctorId}`)
+        const response = await fetch(`${API_BASE_URL}/api/shift-swap/available-colleagues/${selectedShift}/${doctorId}`)
         const data = await response.json()
 
         if (data.success) {
@@ -224,7 +225,7 @@ function ShiftSwap() {
   const handleSendRequest = async () => {
     if (selectedShift && selectedColleague && selectedColleagueShift) {
       try {
-        const response = await fetch('http://localhost:3001/api/shift-swap', {
+        const response = await fetch(`${API_BASE_URL}/api/shift-swap`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -253,7 +254,7 @@ function ShiftSwap() {
         setSearchQuery('')
 
         // Refresh pending requests list
-        const requestsResponse = await fetch(`http://localhost:3001/api/shift-swap/doctor/${doctorId}`)
+        const requestsResponse = await fetch(`${API_BASE_URL}/api/shift-swap/doctor/${doctorId}`)
         const requestsData = await requestsResponse.json()
         if (requestsData.success) {
           setPendingRequests(requestsData.requests)
@@ -291,7 +292,7 @@ function ShiftSwap() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/coworker-response`, {
+        const response = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}/coworker-response`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coworkerDoctorId: doctorId, action: 'accept' })
@@ -333,7 +334,7 @@ function ShiftSwap() {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/coworker-response`, {
+        const response = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}/coworker-response`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coworkerDoctorId: doctorId, action: 'decline', note: result.value || null })
@@ -360,7 +361,7 @@ function ShiftSwap() {
 
   const handleCancelRequest = async (requestId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/shift-swap/${requestId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}`, {
         method: 'DELETE'
       })
 

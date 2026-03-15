@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../config/api'
 
 interface AdminSidebarProps {
   onLogout: () => void
@@ -61,7 +62,7 @@ function AdminSidebar({ onLogout }: AdminSidebarProps) {
 
   const handleUpdateProfile = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/update-profile', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ function AdminSidebar({ onLogout }: AdminSidebarProps) {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/change-password', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

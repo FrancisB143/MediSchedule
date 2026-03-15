@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../../config/api'
 
 interface Request {
   id: string
@@ -56,7 +57,7 @@ function Requests() {
 
   const fetchSwapRequests = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/shift-swap/admin/pending')
+      const res = await fetch(`${API_BASE_URL}/api/shift-swap/admin/pending`)
       const data = await res.json()
       if (data.success) setSwapRequests(data.requests)
     } catch (error) {
@@ -67,7 +68,7 @@ function Requests() {
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:3001/api/leave-requests/all')
+      const response = await fetch(`${API_BASE_URL}/api/leave-requests/all`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch leave requests')
@@ -111,7 +112,7 @@ function Requests() {
     if (result.isConfirmed) {
       try {
         setProcessingId(requestId)
-        const response = await fetch(`http://localhost:3001/api/leave-requests/${requestId}/approve`, {
+        const response = await fetch(`${API_BASE_URL}/api/leave-requests/${requestId}/approve`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -167,7 +168,7 @@ function Requests() {
     if (result.isConfirmed) {
       try {
         setProcessingId(requestId)
-        const response = await fetch(`http://localhost:3001/api/leave-requests/${requestId}/reject`, {
+        const response = await fetch(`${API_BASE_URL}/api/leave-requests/${requestId}/reject`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -222,7 +223,7 @@ function Requests() {
     if (!result.isConfirmed) return
     try {
       setProcessingId(requestId)
-      const res = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/admin-review`, {
+      const res = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}/admin-review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminId, action: 'approve' })
@@ -254,7 +255,7 @@ function Requests() {
     if (!result.isConfirmed) return
     try {
       setProcessingId(requestId)
-      const res = await fetch(`http://localhost:3001/api/shift-swap/${requestId}/admin-review`, {
+      const res = await fetch(`${API_BASE_URL}/api/shift-swap/${requestId}/admin-review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminId, action: 'reject', rejectionReason: result.value || 'Rejected by admin' })

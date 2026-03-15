@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Header from '../../components/Header'
+import API_BASE_URL from '../../config/api'
 
 interface Shift {
   id: string
@@ -54,7 +55,7 @@ function MySchedule() {
   const fetchWeeklyStats = async () => {
     try {
       if (!doctorId) return
-      const response = await fetch(`http://localhost:3001/api/shifts/doctor/${doctorId}`)
+      const response = await fetch(`${API_BASE_URL}/api/shifts/doctor/${doctorId}`)
       const data = await response.json()
       if (data.success) {
         setStats(data.stats)
@@ -73,7 +74,7 @@ function MySchedule() {
       const year = currentDate.getFullYear()
       const month = currentDate.getMonth() + 1
       const response = await fetch(
-        `http://localhost:3001/api/shifts/doctor/${doctorId}/calendar?year=${year}&month=${month}`
+        `${API_BASE_URL}/api/shifts/doctor/${doctorId}/calendar?year=${year}&month=${month}`
       )
       const data = await response.json()
       if (data.success) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Header from '../../components/Header'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../../config/api'
 
 interface LeaveBalance {
   total_annual_days: number
@@ -56,7 +57,7 @@ function LeaveRequest() {
 
   const fetchLeaveBalance = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/leave-requests/doctor/${doctorId}/balance`)
+      const response = await fetch(`${API_BASE_URL}/api/leave-requests/doctor/${doctorId}/balance`)
       const data = await response.json()
       setLeaveBalance(data)
     } catch (error) {
@@ -66,7 +67,7 @@ function LeaveRequest() {
 
   const fetchLeaveRequests = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/leave-requests/doctor/${doctorId}`)
+      const response = await fetch(`${API_BASE_URL}/api/leave-requests/doctor/${doctorId}`)
       const data = await response.json()
       setLeaveRequests(data)
     } catch (error) {
@@ -104,7 +105,7 @@ function LeaveRequest() {
     setSubmitting(true)
 
     try {
-      const response = await fetch('http://localhost:3001/api/leave-requests', {
+      const response = await fetch(`${API_BASE_URL}/api/leave-requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
+import API_BASE_URL from '../../config/api'
 
 interface Staff {
   id: string
@@ -68,7 +69,7 @@ function StaffDirectory() {
   const fetchStaffMembers = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:3001/api/staff')
+      const response = await fetch(`${API_BASE_URL}/api/staff`)
       const data = await response.json()
 
       if (data.success) {
@@ -110,7 +111,7 @@ function StaffDirectory() {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/staff', {
+      const response = await fetch(`${API_BASE_URL}/api/staff`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +188,7 @@ function StaffDirectory() {
     if (!result.isConfirmed) return
 
     try {
-      const response = await fetch(`http://localhost:3001/api/staff/${staffId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/staff/${staffId}`, {
         method: 'DELETE',
       })
 
