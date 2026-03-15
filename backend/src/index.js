@@ -44,6 +44,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'DocTime Backend is running' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-});
+// Start server for local dev; Vercel uses the exported app
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
