@@ -25,9 +25,9 @@ function StaffDirectory() {
   const [error, setError] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [newStaffPassword, setNewStaffPassword] = useState('')
-  const [newStaffEmail, setNewStaffEmail] = useState('')
-  const [newStaffName, setNewStaffName] = useState('')
+  const [, setNewStaffPassword] = useState('')
+  const [, setNewStaffEmail] = useState('')
+  const [, setNewStaffName] = useState('')
   const [newStaff, setNewStaff] = useState({
     name: '',
     role: '',

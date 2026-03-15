@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import Swal from 'sweetalert2'
 import API_BASE_URL from '../config/api'
 
 interface AdminSidebarProps {
