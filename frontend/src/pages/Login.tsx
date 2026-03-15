@@ -26,7 +26,15 @@ function Login({ onLogin }: LoginProps) {
         body: JSON.stringify({ email, password }),
       })
 
-      const data = await response.json()
+      const contentType = response.headers.get('content-type') || ''
+      let data: any = {}
+      let rawText = ''
+
+      if (contentType.includes('application/json')) {
+        data = await response.json().catch(() => ({}))
+      } else {
+        rawText = await response.text().catch(() => '')
+      }
 
       if (response.ok && data.success) {
         // Store token in localStorage
@@ -36,7 +44,12 @@ function Login({ onLogin }: LoginProps) {
         // Call onLogin with userType
         onLogin(data.userType)
       } else {
-        setError(data.error || 'Invalid email or password')
+        const fallbackMsg = response.status === 401
+          ? 'Invalid email or password'
+          : 'Login failed. Please try again.'
+
+        const backendMsg = data?.error || (rawText && rawText.trim() ? rawText : '')
+        setError(backendMsg || fallbackMsg)
       }
     } catch (err) {
       console.error('Login error:', err)
